@@ -1,0 +1,5 @@
+machin
+pympler>=0.5
+cvxopt>=1.1.9
+seaborn>=0.8.1
+pandas>=0.20.3
