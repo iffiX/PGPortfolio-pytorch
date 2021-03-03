@@ -13,24 +13,28 @@ MIN_NUM_PERIOD = 3
 
 
 class DataMatrices:
-    def __init__(self, start, end, period, batch_size=50, volume_average_days=30, buffer_bias_ratio=0,
-                 market="poloniex", coin_filter=1, window_size=50, feature_number=3, test_portion=0.15,
+    def __init__(self, start, end, period, batch_size=50,
+                 volume_average_days=30, buffer_bias_ratio=0,
+                 market="poloniex", coin_filter=1, window_size=50,
+                 feature_number=3, test_portion=0.15,
                  portion_reversed=False, online=False, is_permed=False):
         """
-        :param start: Unix time
-        :param end: Unix time
-        :param access_period: the data access period of the input matrix.
-        :param trade_period: the trading period of the agent.
-        :param global_period: the data access period of the global price matrix.
-                              if it is not equal to the access period, there will be inserted observations
-        :param coin_filter: number of coins that would be selected
-        :param window_size: periods of input data
-        :param train_portion: portion of training set
-        :param is_permed: if False, the sample inside a mini-batch is in order
-        :param validation_portion: portion of cross-validation set
-        :param test_portion: portion of test set
-        :param portion_reversed: if False, the order to sets are [train, validation, test]
-        else the order is [test, validation, train]
+        Args:
+            start: Unix time.
+            end: Unix time.
+            access_period: The data access period of the input matrix.
+            trade_period: The trading period of the agent.
+            global_period: The data access period of the global price matrix.
+                           if it is not equal to the access period,
+                           there will be inserted observations.
+            coin_filter: Number of coins that would be selected
+            window_size: Periods of input data
+            train_portion: Portion of training set
+            is_permed: If False, the sample inside a mini-batch is in order
+            validation_portion: Portion of cross-validation set
+            test_portion: Portion of test set
+            portion_reversed: If False, the order to sets are [train, validation, test]
+                              else the order is [test, validation, train]
         """
         start = int(start)
         self.__end = int(end)
@@ -40,15 +44,18 @@ class DataMatrices:
         type_list = get_type_list(feature_number)
         self.__features = type_list
         self.feature_number = feature_number
-        volume_forward = get_volume_forward(self.__end-start, test_portion, portion_reversed)
-        self.__history_manager = gdm.HistoryManager(coin_number=coin_filter, end=self.__end,
-                                                    volume_average_days=volume_average_days,
-                                                    volume_forward=volume_forward, online=online)
+        volume_forward = get_volume_forward(self.__end - start, test_portion,
+                                            portion_reversed)
+        self.__history_manager = gdm.CoinDataManager(coin_number=coin_filter,
+                                                     end=self.__end,
+                                                     volume_average_days=volume_average_days,
+                                                     volume_forward=volume_forward,
+                                                     online=online)
         if market == "poloniex":
-            self.__global_data = self.__history_manager.get_global_panel(start,
-                                                                         self.__end,
-                                                                         period=period,
-                                                                         features=type_list)
+            self.__global_data = self.__history_manager.get_coin_features(start,
+                                                                          self.__end,
+                                                                          period=period,
+                                                                          features=type_list)
         else:
             raise ValueError("market {} is not valid".format(market))
         self.__period_length = period
@@ -75,40 +82,16 @@ class DataMatrices:
                                                is_permed=self.__is_permed)
 
         logging.info("the number of training examples is %s"
-                     ", of test examples is %s" % (self._num_train_samples, self._num_test_samples))
-        logging.debug("the training set is from %s to %s" % (min(self._train_ind), max(self._train_ind)))
-        logging.debug("the test set is from %s to %s" % (min(self._test_ind), max(self._test_ind)))
+                     ", of test examples is %s" % (
+                     self._num_train_samples, self._num_test_samples))
+        logging.debug("the training set is from %s to %s" % (
+        min(self._train_ind), max(self._train_ind)))
+        logging.debug("the test set is from %s to %s" % (
+        min(self._test_ind), max(self._test_ind)))
 
     @property
     def global_weights(self):
         return self.__PVM
-
-    @staticmethod
-    def create_from_config(config):
-        """main method to create the DataMatrices in this project
-        @:param config: config dictionary
-        @:return: a DataMatrices object
-        """
-        config = config.copy()
-        input_config = config["input"]
-        train_config = config["training"]
-        start = parse_time(input_config["start_date"])
-        end = parse_time(input_config["end_date"])
-        return DataMatrices(start=start,
-                            end=end,
-                            market=input_config["market"],
-                            feature_number=input_config["feature_number"],
-                            window_size=input_config["window_size"],
-                            online=input_config["online"],
-                            period=input_config["global_period"],
-                            coin_filter=input_config["coin_number"],
-                            is_permed=input_config["is_permed"],
-                            buffer_bias_ratio=train_config["buffer_biased"],
-                            batch_size=train_config["batch_size"],
-                            volume_average_days=input_config["volume_average_days"],
-                            test_portion=input_config["test_portion"],
-                            portion_reversed=input_config["portion_reversed"],
-                            )
 
     @property
     def global_matrix(self):
@@ -124,7 +107,7 @@ class DataMatrices:
 
     @property
     def test_indices(self):
-        return self._test_ind[:-(self._window_size+1):]
+        return self._test_ind[:-(self._window_size + 1):]
 
     @property
     def num_test_samples(self):
@@ -136,7 +119,7 @@ class DataMatrices:
         Let it be None if in the backtest case.
         """
         self.__delta += 1
-        self._train_ind.append(self._train_ind[-1]+1)
+        self._train_ind.append(self._train_ind[-1] + 1)
         appended_index = self._train_ind[-1]
         self.__replay_buffer.append_experience(appended_index)
 
@@ -153,15 +136,17 @@ class DataMatrices:
         with shape [batch_size, assets]; "w" a list of numpy arrays list length is
         batch_size
         """
-        batch = self.__pack_samples([exp.state_index for exp in self.__replay_buffer.next_experience_batch()])
+        batch = self.__pack_samples([exp.state_index for exp in
+                                     self.__replay_buffer.next_experience_batch()])
         return batch
 
     def __pack_samples(self, indexs):
         indexs = np.array(indexs)
-        last_w = self.__PVM.values[indexs-1, :]
+        last_w = self.__PVM.values[indexs - 1, :]
 
         def setw(w):
             self.__PVM.iloc[indexs, :] = w
+
         M = [self.get_submatrix(index) for index in indexs]
         M = np.array(M)
         X = M[:, :, :, :-1]
@@ -170,7 +155,7 @@ class DataMatrices:
 
     # volume in y is the volume in next access period
     def get_submatrix(self, ind):
-        return self.__global_data.values[:, :, ind:ind+self._window_size+1]
+        return self.__global_data.values[:, :, ind:ind + self._window_size + 1]
 
     def __divide_data(self, test_portion, portion_reversed):
         train_portion = 1 - test_portion

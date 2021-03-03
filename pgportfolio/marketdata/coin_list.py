@@ -1,17 +1,14 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-from pgportfolio.marketdata.poloniex import Poloniex
 import pandas as pd
-from datetime import datetime
 import logging
+from pgportfolio.marketdata.poloniex import Poloniex
+from datetime import datetime
 from pgportfolio.constants import *
 
 
 class CoinList(object):
     def __init__(self, end, volume_average_days=1, volume_forward=0):
         self._polo = Poloniex()
-        # connect the internet to accees volumes
+        # connect the internet to access volumes
         vol = self._polo.market_volume()
         ticker = self._polo.market_ticker()
         pairs = []
@@ -19,8 +16,8 @@ class CoinList(object):
         volumes = []
         prices = []
 
-        start_time = end-(DAY*volume_average_days)-volume_forward
-        end_time = end-volume_forward
+        start_time = end - (DAY * volume_average_days) - volume_forward
+        end_time = end - volume_forward
         logging.info(
             "selecting coin online from %s to %s"
             % (datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M'),
@@ -56,6 +53,18 @@ class CoinList(object):
     def all_coins(self):
         return self._polo.market_status().keys()
 
+    def top_n_volume(self, n=5, order=True, min_volume=0):
+        if min_volume == 0:
+            r = self._df.loc[self._df['price'] > 2e-6]
+            r = r.sort_values(by='volume', ascending=False)[:n]
+            print(r)
+            if order:
+                return r
+            else:
+                return r.sort_index()
+        else:
+            return self._df[self._df.volume >= min_volume]
+
     def get_chart_until_success(self, pair, start, period, end):
         is_connect_success = False
         chart = {}
@@ -72,8 +81,8 @@ class CoinList(object):
 
     # get several days volume
     def __get_total_volume(self, pair, global_end, days, forward):
-        start = global_end-(DAY*days)-forward
-        end = global_end-forward
+        start = global_end - (DAY * days) - forward
+        end = global_end - forward
         chart = self.get_chart_until_success(
             pair=pair, period=DAY, start=start, end=end
         )
@@ -85,14 +94,4 @@ class CoinList(object):
                 result += one_day["quoteVolume"]
         return result
 
-    def top_n_volume(self, n=5, order=True, min_volume=0):
-        if min_volume == 0:
-            r = self._df.loc[self._df['price'] > 2e-6]
-            r = r.sort_values(by='volume', ascending=False)[:n]
-            print(r)
-            if order:
-                return r
-            else:
-                return r.sort_index()
-        else:
-            return self._df[self._df.volume >= min_volume]
+
