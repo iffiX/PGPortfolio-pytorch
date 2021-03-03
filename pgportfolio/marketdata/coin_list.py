@@ -36,10 +36,10 @@ class CoinList(object):
                             prices.append(float(ticker[k]['last']))
                     else:
                         volumes.append(
-                            self.__get_total_volume(pair=k,
-                                                    global_end=end,
-                                                    days=volume_average_days,
-                                                    forward=volume_forward)
+                            self._get_total_volume(pair=k,
+                                                   global_end=end,
+                                                   days=volume_average_days,
+                                                   forward=volume_forward)
                         )
         self._df = pd.DataFrame({'coin': coins, 'pair': pairs,
                                  'volume': volumes, 'price': prices})
@@ -80,7 +80,7 @@ class CoinList(object):
         return chart
 
     # get several days volume
-    def __get_total_volume(self, pair, global_end, days, forward):
+    def _get_total_volume(self, pair, global_end, days, forward):
         start = global_end - (DAY * days) - forward
         end = global_end - forward
         chart = self.get_chart_until_success(

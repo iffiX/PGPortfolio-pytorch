@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
 from pgportfolio.trade import trader
-from pgportfolio.marketdata.datamatrices import DataMatrices
+from pgportfolio.learn.datamatrices import DataMatrices
 import logging
 from pgportfolio.tools.trade import calculate_pv_after_commission
 

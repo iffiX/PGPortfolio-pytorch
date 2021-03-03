@@ -1,13 +1,11 @@
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-import pgportfolio.marketdata.globaldatamatrix as gdm
+import logging
 import numpy as np
 import pandas as pd
-import logging
+import pgportfolio.marketdata.coin_data_manager as cdm
 from pgportfolio.tools.configprocess import parse_time
 from pgportfolio.tools.data import get_volume_forward, get_type_list
-import pgportfolio.learn.replaybuffer as rb
+from machin.frame.buffers.buffer import Buffer
+
 
 MIN_NUM_PERIOD = 3
 

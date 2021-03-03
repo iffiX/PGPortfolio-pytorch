@@ -46,8 +46,3 @@ class ReplayBuffer:
                                         self.__sample_bias)
             batch = self.__experiences[batch_start:batch_start+self.__batch_size]
         return batch
-
-
-class Experience:
-    def __init__(self, state_index):
-        self.state_index = int(state_index)

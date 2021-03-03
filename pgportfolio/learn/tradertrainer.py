@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from pgportfolio.learn.nnagent import NNAgent
-from pgportfolio.marketdata.datamatrices import DataMatrices
+from pgportfolio.learn.datamatrices import DataMatrices
 import logging
 Result = collections.namedtuple("Result",
                                 [

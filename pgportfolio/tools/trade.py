@@ -1,6 +1,6 @@
 from __future__ import division,absolute_import,print_function
 import numpy as np
-from pgportfolio.marketdata.datamatrices import DataMatrices
+from pgportfolio.learn.datamatrices import DataMatrices
 from pgportfolio.marketdata.globaldatamatrix import HistoryManager
 from pgportfolio.tools.configprocess import parse_time
 from pgportfolio.constants import *

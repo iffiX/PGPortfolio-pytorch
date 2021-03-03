@@ -62,7 +62,7 @@ def main():
         logging.basicConfig(level=logging.INFO)
         generate.add_packages(load_config(), int(options.repeat))
     elif options.mode == "download_data":
-        from pgportfolio.marketdata.datamatrices import DataMatrices
+        from pgportfolio.learn.datamatrices import DataMatrices
         with open("./pgportfolio/net_config.json") as file:
             config = json.load(file)
         config = preprocess_config(config)
