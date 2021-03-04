@@ -2,7 +2,7 @@ import sqlite3
 import logging
 import numpy as np
 import pandas as pd
-from pgportfolio.marketdata.coinlist import CoinList
+from pgportfolio.marketdata.coin_list import CoinList
 from pgportfolio.tools.data import panel_fillna
 from pgportfolio.constants import *
 from datetime import datetime

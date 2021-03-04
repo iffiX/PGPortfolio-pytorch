@@ -1,13 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-import tensorflow as tf
-import tflearn
+import torch as t
 
 
-class NeuralNetWork:
+class NeuralNetWork(t.nn.Module):
     def __init__(self, feature_number, rows, columns, layers, device):
         tf_config = tf.ConfigProto()
         self.session = tf.Session(config=tf_config)
@@ -30,7 +24,7 @@ class NeuralNetWork:
         pass
 
 
-class CNN(NeuralNetWork):
+class CNN(t.nn.Module):
     # input_shape (features, rows, columns)
     def __init__(self, feature_number, rows, columns, layers, device):
         NeuralNetWork.__init__(self, feature_number, rows, columns, layers, device)
