@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from pgportfolio.learn.tradertrainer import TraderTrainer
+from pgportfolio.nnagent.tradertrainer import TraderTrainer
 import logging
 import tflearn
 
@@ -27,10 +27,10 @@ class RollingTrainer(TraderTrainer):
 
     @property
     def rolling_training_steps(self):
-        return self.config["trading"]["rolling_training_steps"]
+        return self._config["trading"]["rolling_training_steps"]
 
     def __rolling_logging(self):
-        fast_train = self.train_config["fast_train"]
+        fast_train = self._train_config["fast_train"]
         if not fast_train:
             tflearn.is_training(False, self._agent.session)
 

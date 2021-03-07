@@ -1,24 +1,6 @@
-from __future__ import absolute_import, division, print_function
-import sys
 import time
 from datetime import datetime
 import json
-import os
-rootpath = os.path.dirname(os.path.abspath(__file__)).\
-    replace("\\pgportfolio\\tools", "").replace("/pgportfolio/tools","")
-
-try:
-    unicode        # Python 2
-except NameError:
-    unicode = str  # Python 3
-
-
-def preprocess_config(config):
-    fill_default(config)
-    if sys.version_info[0] == 2:
-        return byteify(config)
-    else:
-        return config
 
 
 def fill_default(config):
@@ -40,7 +22,7 @@ def fill_input_default(input_config):
     set_missing(input_config, "portion_reversed", False)
     set_missing(input_config, "market", "poloniex")
     set_missing(input_config, "norm_method", "absolute")
-    set_missing(input_config, "is_permed", False)
+    set_missing(input_config, "is_unordered", False)
     set_missing(input_config, "fake_ratio", 1)
 
 
@@ -70,28 +52,13 @@ def fill_layers_default(layers):
         elif layer["type"] == "DropOut":
             pass
         else:
-            raise ValueError("layer name {} not supported".format(layer["type"]))
+            raise ValueError("layer name {} not supported"
+                             .format(layer["type"]))
 
 
 def set_missing(config, name, value):
     if name not in config:
         config[name] = value
-
-
-def byteify(input):
-    if isinstance(input, dict):
-        return {byteify(key): byteify(value)
-                for key, value in input.iteritems()}
-    elif isinstance(input, list):
-        return [byteify(element) for element in input]
-    elif isinstance(input, unicode):
-        return str(input)
-    else:
-        return input
-
-
-def parse_time(time_string):
-    return time.mktime(datetime.strptime(time_string, "%Y/%m/%d").timetuple())
 
 
 def load_config(index=None):

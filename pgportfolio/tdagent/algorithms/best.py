@@ -11,8 +11,8 @@ class BEST(TDAgent):
 
     def decide_by_history(self, data, last_b=None):
         if self.last_b is None:
-            from pgportfolio.tools.trade import get_test_data
-            from pgportfolio.tools.configprocess import preprocess_config
+            from pgportfolio.utils.trade import get_test_data
+            from pgportfolio.utils.configprocess import preprocess_config
             import json
             with open("pgportfolio/net_config.json") as file:
                 config = json.load(file)

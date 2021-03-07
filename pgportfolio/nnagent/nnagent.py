@@ -1,7 +1,7 @@
 import torch as t
 from pgportfolio.constants import *
-from pgportfolio.tools.cache import cache
-import pgportfolio.learn.network as network
+from pgportfolio.utils.cache import cache
+import pgportfolio.nnagent.network as network
 
 
 class NNAgent:
@@ -80,7 +80,7 @@ class NNAgent:
         return t.prod(self.pv_vector)
 
     @cache(depend_attr=["_y", "_net_output"])
-    def sharp_ratio(self):
+    def sharpe_ratio(self):
         return (self.pv_mean - 1) / self.pv_std
 
     @cache(depend_attr=["_y", "_net_output"])
@@ -107,7 +107,7 @@ class NNAgent:
             setw(new_w[:, 1:])
         return self
 
-    def train_on(self, x, last_w, y, setw):
+    def train(self, x, last_w, y, setw):
         loss = self.begin_evaluate(x, last_w, y, setw).loss_function()
         self.net.zero_grad()
         loss.backward()

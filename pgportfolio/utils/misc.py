@@ -56,7 +56,7 @@ def pricenorm2d(m, reference_column,
         raise ValueError("there is no norm morthod called %s" % norm_method)
 
 
-def get_type_list(feature_number):
+def get_feature_list(feature_number):
     """
     :param feature_number: an int indicates the number of features
     :return: a list of features n
@@ -73,13 +73,6 @@ def get_type_list(feature_number):
     else:
         raise ValueError("feature number could not be %s" % feature_number)
     return type_list
-
-
-def panel2array(panel):
-    """convert the panel to datatensor (numpy array) without btc
-    """
-    without_btc = np.transpose(panel.values, axes=(2, 0, 1))
-    return without_btc
 
 
 def count_periods(start, end, period_length):
@@ -99,18 +92,6 @@ def get_volume_forward(time_span, portion, portion_reversed):
     return volume_forward
 
 
-def panel_fillna(panel, type="bfill"):
-    """
-    fill nan along the 3rd axis
-    :param panel: the panel to be filled
-    :param type: bfill or ffill
-    """
-    frames = {}
-    for item in panel.items:
-        if type == "both":
-            frames[item] = panel.loc[item].fillna(axis=1, method="bfill").\
-                fillna(axis=1, method="ffill")
-        else:
-            frames[item] = panel.loc[item].fillna(axis=1, method=type)
-    return pd.Panel(frames)
+def parse_time(time_string):
+    return time.mktime(datetime.strptime(time_string, "%Y/%m/%d").timetuple())
 

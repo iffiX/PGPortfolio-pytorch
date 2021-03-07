@@ -35,7 +35,7 @@ class Cache(object):
         else:
             new_id = [id(getattr(inst, self.depend_attr))]
 
-        if  new_id != self.last_id:
+        if new_id != self.last_id:
             result = self.method(inst)
             self.result = result
         else:

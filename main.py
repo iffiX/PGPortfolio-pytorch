@@ -6,11 +6,11 @@ import time
 from argparse import ArgumentParser
 from datetime import datetime
 
-from pgportfolio.tools.configprocess import preprocess_config
-from pgportfolio.tools.configprocess import load_config
-from pgportfolio.tools.trade import save_test_data
-from pgportfolio.tools.shortcut import execute_backtest
-from pgportfolio.resultprocess import plot
+from pgportfolio.utils.configprocess import preprocess_config
+from pgportfolio.utils.configprocess import load_config
+from pgportfolio.utils.trade import save_test_data
+from pgportfolio.utils.shortcut import execute_backtest
+from pgportfolio.utils import plot
 
 
 def build_parser():
@@ -62,7 +62,7 @@ def main():
         logging.basicConfig(level=logging.INFO)
         generate.add_packages(load_config(), int(options.repeat))
     elif options.mode == "download_data":
-        from pgportfolio.learn.datamatrices import DataMatrices
+        from pgportfolio.nnagent.datamatrices import DataMatrices
         with open("./pgportfolio/net_config.json") as file:
             config = json.load(file)
         config = preprocess_config(config)

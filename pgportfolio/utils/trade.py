@@ -1,10 +1,10 @@
 from __future__ import division,absolute_import,print_function
 import numpy as np
-from pgportfolio.learn.datamatrices import DataMatrices
+from pgportfolio.nnagent.datamatrices import DataMatrices
 from pgportfolio.marketdata.globaldatamatrix import HistoryManager
-from pgportfolio.tools.configprocess import parse_time
+from pgportfolio.utils.configprocess import parse_time
 from pgportfolio.constants import *
-from pgportfolio.tools.data import get_volume_forward
+from pgportfolio.utils.data import get_volume_forward
 from time import time
 
 

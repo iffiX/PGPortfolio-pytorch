@@ -22,6 +22,7 @@
     "global_period":1800,
     "feature_number":3,
     "test_portion":0.08,
+    "validation_portion": 0.08,
     "online":false,
     "start_date":"2015/07/01",
     "end_date":"2017/07/01",

@@ -3,7 +3,6 @@ import logging
 import numpy as np
 import pandas as pd
 from pgportfolio.marketdata.coin_list import CoinList
-from pgportfolio.tools.data import panel_fillna
 from pgportfolio.constants import *
 from datetime import datetime
 
@@ -59,8 +58,14 @@ class CoinDataManager:
 
         time_index = pd.to_datetime(list(range(start, end + 1, period)),
                                     unit='s')
-        panel = pd.Panel(items=features, major_axis=coins,
-                         minor_axis=time_index, dtype=np.float32)
+        df = pd.DataFrame(
+            index=pd.MultiIndex.from_product(
+                coins,  # major
+                time_index,  # minor
+            ),
+            columns=features,
+            dtype=np.float32
+        )
 
         connection = sqlite3.connect(DATABASE_DIR)
         try:
@@ -125,13 +130,13 @@ class CoinDataManager:
                     serial_data = pd.read_sql_query(sql, con=connection,
                                                     parse_dates=["date_norm"],
                                                     index_col="date_norm")
-                    panel.loc[feature, coin, serial_data.index] = \
+                    df.loc[(coin, serial_data.index), feature] = \
                         serial_data.squeeze()
-                    panel = panel_fillna(panel, "both")
+                    df = df.fillna(method="bfill", axis=1)
         finally:
             connection.commit()
             connection.close()
-        return panel.values
+        return df.values
 
     def select_coins(self, start, end):
         """
