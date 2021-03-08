@@ -1,27 +1,31 @@
-from __future__ import absolute_import, print_function, division
+import datetime
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib import rc
-import pandas as pd
-import logging
-import json
-import numpy as np
-import datetime
-from pgportfolio.utils.indicator import max_drawdown, sharpe, positive_count, negative_count, moving_accumulate
-from pgportfolio.utils.configprocess import parse_time, check_input_same
-from pgportfolio.trade.shortcut import execute_backtest
 
-# the dictionary of name of indicators mapping to the function of related indicators
-# input is portfolio changes
+from pgportfolio.utils.indicator import \
+    max_drawdown, sharpe, positive_count, negative_count, moving_accumulate
+from pgportfolio.utils.misc import parse_time
+from pgportfolio.trade.backtest import BackTest
+
+# The dictionary of name of indicators mapping to the function of
+# related indicators.
+# Input is portfolio change vector, a ndarray.
 INDICATORS = {"portfolio value": np.prod,
               "sharpe ratio": sharpe,
               "max drawdown": max_drawdown,
               "positive periods": positive_count,
               "negative periods": negative_count,
-              "postive day": lambda pcs: positive_count(moving_accumulate(pcs, 48)),
-              "negative day": lambda pcs: negative_count(moving_accumulate(pcs, 48)),
-              "postive week": lambda pcs: positive_count(moving_accumulate(pcs, 336)),
-              "negative week": lambda pcs: negative_count(moving_accumulate(pcs, 336)),
+              "postive day":
+                  lambda pcs: positive_count(moving_accumulate(pcs, 48)),
+              "negative day":
+                  lambda pcs: negative_count(moving_accumulate(pcs, 48)),
+              "postive week":
+                  lambda pcs: positive_count(moving_accumulate(pcs, 336)),
+              "negative week":
+                  lambda pcs: negative_count(moving_accumulate(pcs, 336)),
               "average": np.mean}
 
 NAMES = {"best": "Best Stock (Benchmark)",
@@ -38,29 +42,30 @@ NAMES = {"best": "Best Stock (Benchmark)",
          "bk": "BK",
          "corn": "CORN",
          "m0": "M0",
-         "wmamr": "WMAMR"
-         }
+         "wmamr": "WMAMR"}
 
 
 def plot_backtest(config, algos, labels=None):
     """
-    @:param config: config dictionary
-    @:param algos: list of strings representing the name of algorithms or index of pgportfolio result
+    Args:
+        config: config dictionary.
+        algos: list of strings representing the name of algorithms.
+        labels: labels used in the legend.
     """
     results = []
     for i, algo in enumerate(algos):
-        if algo.isdigit():
-            results.append(np.cumprod(_load_from_summary(algo, config)))
-            logging.info("load index "+algo+" from csv file")
-        else:
-            logging.info("start executing "+algo)
-            results.append(np.cumprod(execute_backtest(algo, config)))
-            logging.info("finish executing "+algo)
+        b = BackTest(config, agent_algorithm=algo)
+        b.trade()
+        results.append(np.cumprod(b.test_pc_vector))
 
     start, end = _extract_test(config)
     timestamps = np.linspace(start, end, len(results[0]))
-    dates = [datetime.datetime.fromtimestamp(int(ts)-int(ts)%config["input"]["global_period"])
-             for ts in timestamps]
+    dates = [
+        datetime.datetime.fromtimestamp(
+            int(ts) - int(ts) % config["input"]["global_period"]
+        )
+        for ts in timestamps
+    ]
 
     weeks = mdates.WeekdayLocator()
     days = mdates.DayLocator()
@@ -80,7 +85,7 @@ def plot_backtest(config, algos, labels=None):
         else:
             label = NAMES[algos[i]]
         ax.semilogy(dates, pvs, linewidth=1, label=label)
-        #ax.plot(dates, pvs, linewidth=1, label=label)
+        # ax.plot(dates, pvs, linewidth=1, label=label)
 
     plt.ylabel("portfolio value $p_t/p_0$", fontsize=12)
     plt.xlabel("time", fontsize=12)
@@ -94,7 +99,7 @@ def plot_backtest(config, algos, labels=None):
     ax.xaxis.set_major_formatter(xfmt)
     plt.grid(True)
     plt.tight_layout()
-    ax.legend(loc="upper left", prop={"size":10})
+    ax.legend(loc="upper left", prop={"size": 10})
     fig.autofmt_xdate()
     plt.savefig("result.eps", bbox_inches='tight',
                 pad_inches=0)
@@ -104,38 +109,42 @@ def plot_backtest(config, algos, labels=None):
 def table_backtest(config, algos, labels=None, format="raw",
                    indicators=list(INDICATORS.keys())):
     """
-    @:param config: config dictionary
-    @:param algos: list of strings representing the name of algorithms
-    or index of pgportfolio result
-    @:param format: "raw", "html", "latex" or "csv". If it is "csv",
-    the result will be save in a csv file. otherwise only print it out
-    @:return: a string of html or latex code
+    Args:
+        config: config dictionary.
+        algos: list of strings representing the name of algorithms
+        or index of pgportfolio result.
+        format: "raw", "html", "latex" or "csv". If it is "csv",
+        the result will be save in a csv file. otherwise only
+        print it out.
+    Returns:
+         A string of html or latex code.
     """
     results = []
     labels = list(labels)
     for i, algo in enumerate(algos):
-        if algo.isdigit():
-            portfolio_changes = _load_from_summary(algo, config)
-            logging.info("load index " + algo + " from csv file")
-        else:
-            logging.info("start executing " + algo)
-            portfolio_changes = execute_backtest(algo, config)
-            logging.info("finish executing " + algo)
+        b = BackTest(config, agent_algorithm=algo)
+        b.trade()
+        portfolio_changes = b.test_pc_vector
 
         indicator_result = {}
         for indicator in indicators:
-            indicator_result[indicator] = INDICATORS[indicator](portfolio_changes)
+            indicator_result[indicator] = \
+                INDICATORS[indicator](portfolio_changes)
         results.append(indicator_result)
-        if len(labels)<=i:
+        if len(labels) <= i:
             labels.append(NAMES[algo])
 
     dataframe = pd.DataFrame(results, index=labels)
 
     start, end = _extract_test(config)
-    start = datetime.datetime.fromtimestamp(start - start%config["input"]["global_period"])
-    end = datetime.datetime.fromtimestamp(end - end%config["input"]["global_period"])
+    start = datetime.datetime.fromtimestamp(
+        start - start % config["input"]["global_period"]
+    )
+    end = datetime.datetime.fromtimestamp(
+        end - end % config["input"]["global_period"]
+    )
 
-    print("backtest start from "+ str(start) + " to " + str(end))
+    print("backtest start from " + str(start) + " to " + str(end))
     if format == "html":
         print(dataframe.to_html())
     elif format == "latex":
@@ -143,7 +152,7 @@ def table_backtest(config, algos, labels=None, format="raw",
     elif format == "raw":
         print(dataframe.to_string())
     elif format == "csv":
-        dataframe.to_csv("./compare"+end.strftime("%Y-%m-%d")+".csv")
+        dataframe.to_csv("./compare" + end.strftime("%Y-%m-%d") + ".csv")
     else:
         raise ValueError("The format " + format + " is not supported")
 
@@ -155,16 +164,3 @@ def _extract_test(config):
     start = global_end - config["input"]["test_portion"] * span
     end = global_end
     return start, end
-
-
-def _load_from_summary(index, config):
-    """ load the backtest result form train_package/train_summary
-    @:param index: index of the training and backtest
-    @:return: numpy array of the portfolio changes
-    """
-    dataframe = pd.DataFrame.from_csv("./train_package/train_summary.csv")
-    history_string = dataframe.loc[int(index)]["backtest_test_history"]
-    if not check_input_same(config, json.loads(dataframe.loc[int(index)]["config"])):
-        raise ValueError("the date of this index is not the same as the default config")
-    return np.fromstring(history_string, sep=",")[:-1]
-

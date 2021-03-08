@@ -19,6 +19,13 @@ ALGOS = {"crp": crp.CRP, "ons": ons.ONS, "olmar": olmar.OLMAR, "up": up.UP,
 
 class BackTest:
     def __init__(self, config, initial_BTC=1.0, agent_algorithm="nn"):
+        """
+        Args:
+            config: Config dictionary.
+            initial_BTC: Initial BTC amount.
+            agent_algorithm: "nn" for nnagent, or anything in tdagent,
+            or "not_used" for pure data extraction with no agent.
+        """
         self._steps = 0
         self._agent_alg = agent_algorithm
 
@@ -27,13 +34,14 @@ class BackTest:
             self._coin_name_list = self._rolling_trainer.coin_list
             self._agent = self._rolling_trainer
             test_set = self._rolling_trainer.coins
-        elif agent_algorithm in ALGOS:
+        elif agent_algorithm in ALGOS or agent_algorithm == "not_used":
             config = config.copy()
             config["input"]["feature_number"] = 1
             cdm, buffer = buffer_init_helper(config, "cpu")
             test_set = buffer.get_test_set()
             self._coin_name_list = cdm.coins
-            self._agent = ALGOS[agent_algorithm]()
+            if agent_algorithm != "not_used":
+                self._agent = ALGOS[agent_algorithm]()
         else:
             raise ValueError('The algorithm name "{}" is not supported. '
                              'Supported algorithms are {}'
@@ -52,6 +60,7 @@ class BackTest:
 
         self._last_weight = np.zeros((self._coin_number+1,))
         self._last_weight[0] = 1.0
+        logging.info("Algorithm: {}".format(agent_algorithm))
 
     @property
     def agent(self):
@@ -65,6 +74,11 @@ class BackTest:
     def test_pv(self):
         # dot product of all values in the portfolio value vector.
         return self._test_pv
+
+    @property
+    def test_data(self):
+        # portfolio relative value vector used in experiments.
+        return self._generate_test_data()
 
     @property
     def test_pc_vector(self):

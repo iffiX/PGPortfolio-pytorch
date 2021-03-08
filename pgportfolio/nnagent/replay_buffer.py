@@ -2,9 +2,9 @@ import torch as t
 import numpy as np
 from typing import Union, Iterable
 from torch.utils.data import IterableDataset
-from pgportfolio.marketdata.coin_data_manager import CoinDataManager
-from pgportfolio.utils.misc import parse_time, get_volume_forward, \
-    get_feature_list
+from pgportfolio.marketdata.coin_data_manager import \
+    coin_data_manager_init_helper
+from pgportfolio.utils.misc import get_feature_list, parse_time
 
 
 class PGPDataset(IterableDataset):
@@ -248,30 +248,14 @@ class PGPBuffer:
         return train_idx, test_idx, val_idx
 
 
-def buffer_init_helper(config, device):
+def buffer_init_helper(config, device, directory=None):
     input_config = config["input"]
     train_config = config["train"]
-
-    start = parse_time(input_config["start_date"])
-    end = parse_time(input_config["end_date"])
-    cdm = CoinDataManager(
-        coin_number=input_config["coin_number"],
-        end=int(end),
-        volume_average_days=input_config["volume_average_days"],
-        volume_forward=get_volume_forward(
-            int(end) - int(start),
-            (input_config["validation_portion"] +
-             input_config["test_portion"]),
-            input_config["portion_reversed"]
-        )
+    cdm, features = coin_data_manager_init_helper(
+        config, download=True, directory=directory
     )
     buffer = PGPBuffer(
-        cdm.get_coin_features(
-            start=start,
-            end=end,
-            period=input_config["global_period"],
-            features=get_feature_list(input_config["feature_number"])
-        ),
+        features,
         batch_size=train_config["batch_size"],
         window_size=input_config["window_size"],
         test_portion=input_config["test_portion"],

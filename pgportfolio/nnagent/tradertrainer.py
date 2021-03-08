@@ -1,7 +1,3 @@
-import json
-import os
-import time
-import collections
 import logging
 import numpy as np
 import torch as t
@@ -11,31 +7,15 @@ from pgportfolio.nnagent.network import CNN
 from pgportfolio.nnagent.metrics import Metrics
 from pgportfolio.nnagent.replay_buffer import buffer_init_helper
 
-Result = collections.namedtuple("Result",
-                                [
-                                    "test_pv",
-                                    "test_log_mean",
-                                    "test_log_mean_free",
-                                    "test_history",
-                                    "config",
-                                    "net_dir",
-                                    "backtest_test_pv",
-                                    "backtest_test_history",
-                                    "backtest_test_log_mean",
-                                    "training_time"])
-
 
 class TraderTrainer(pl.LightningModule):
-    def __init__(self, config):
+    def __init__(self, config, directory=None):
         """
         Args:
-            config: config dictionary
+            config: config dictionary.
+            directory: root of the database working directory.
         """
         super(TraderTrainer, self).__init__()
-        # variables
-        self.best_metric = 0
-        self.upperbound_validation = 1
-        self.upperbound_test = 1
 
         # seed
         np.random.seed(config["random_seed"])
@@ -47,7 +27,9 @@ class TraderTrainer(pl.LightningModule):
         self._input_config = config["input"]
 
         # major components
-        self._cdm, self._buffer = buffer_init_helper(config, self.device)
+        self._cdm, self._buffer = buffer_init_helper(
+            config, self.device, directory
+        )
         self._net = CNN(self._input_config["feature_number"],
                         self._input_config["coin_number"],
                         self._input_config["window_size"],

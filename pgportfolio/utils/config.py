@@ -66,15 +66,20 @@ def load_config(path):
     return fill_default(config)
 
 
-def check_input_same(config1, config2):
-    input1 = config1["input"]
-    input2 = config2["input"]
-    if input1["start_date"] != input2["start_date"]:
-        return False
-    elif input1["end_date"] != input2["end_date"]:
-        return False
-    elif input1["test_portion"] != input2["test_portion"]:
-        return False
-    else:
-        return True
+def save_config(config, path):
+    with open(path) as file:
+        json.dump(config, file, sort_keys=True, indent=4)
+
+
+# def check_config_backtest_same(config1, config2):
+#     input1 = config1["input"]
+#     input2 = config2["input"]
+#     if input1["start_date"] != input2["start_date"]:
+#         return False
+#     elif input1["end_date"] != input2["end_date"]:
+#         return False
+#     elif input1["test_portion"] != input2["test_portion"]:
+#         return False
+#     else:
+#         return True
 

@@ -1,14 +1,13 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from os import path
+import pathlib
 
-DATABASE_DIR = path.realpath(__file__).\
-    replace('pgportfolio/constants.pyc','/database/Data.db').\
-    replace("pgportfolio\\constants.pyc","database\\Data.db").\
-    replace('pgportfolio/constants.py','/database/Data.db').\
-    replace("pgportfolio\\constants.py","database\\Data.db")
+ROOT_DIR = pathlib.Path(__file__).parent.parent.absolute()
 
-CONFIG_FILE_DIR = 'net_config.json'
+# by default, DATABASE_DIR is root_dir/database
+DATABASE_DIR = str(ROOT_DIR.joinpath("database"))
+
+# by default, CONFIG_FILE is root_dir/net_config.json
+CONFIG_FILE = str(ROOT_DIR.joinpath("config.json"))
+
 LAMBDA = 1e-4  # lambda in loss function 5 in training
 
 # About time
@@ -21,7 +20,3 @@ TWO_HOUR = HOUR * 2
 FOUR_HOUR = HOUR * 4
 DAY = HOUR * 24
 YEAR = DAY * 365
-
-# trading table name
-TABLE_NAME = 'test'
-

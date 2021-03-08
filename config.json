@@ -10,7 +10,6 @@
     "learning_rate":0.00028,
     "batch_size":109,
     "buffer_biased":5e-5,
-    "snap_shot":false,
     "fast_train":true,
     "training_method":"Adam",
     "loss_function":"loss_function6"

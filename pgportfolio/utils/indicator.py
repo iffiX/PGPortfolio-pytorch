@@ -1,11 +1,12 @@
-from __future__ import division, print_function, absolute_import
 import numpy as np
 
 
 def max_drawdown(pc_array):
-    """calculate the max drawdown with the portfolio changes
-    @:param pc_array: all the portfolio changes during a trading process
-    @:return: max drawdown
+    """
+    Calculate the max drawdown with the portfolio changes.
+
+    Returns:
+        Max drawdown.
     """
     portfolio_values = []
     drawdown_list = []
@@ -24,9 +25,11 @@ def max_drawdown(pc_array):
 
 
 def sharpe(pc_array):
-    """calculate sharpe ratio with the portfolio changes
-    @:param pc_array: all the portfolio changes during a trading process
-    @:return: sharpe ratio
+    """
+    Calculate sharpe ratio with the portfolio changes.
+
+    Returns:
+        Sharpe ratio.
     """
     pc_array = pc_array-1.0
     return np.mean(pc_array)/np.std(pc_array)

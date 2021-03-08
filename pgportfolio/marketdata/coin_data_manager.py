@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from pgportfolio.marketdata.coin_list import CoinList
 from pgportfolio.constants import *
+from pgportfolio.utils.misc import parse_time, get_volume_forward, \
+    get_feature_list
 from datetime import datetime
 
 
@@ -12,7 +14,7 @@ class CoinDataManager:
     # NOTE: return of the sqlite results is a list of tuples,
     # each tuple is a row.
     def __init__(self, coin_number, end, volume_average_days=1,
-                 volume_forward=0, online=True):
+                 volume_forward=0, online=True, directory=None):
         self._initialize_db()
         self._storage_period = FIVE_MINUTES  # keep this as 300
         self._coin_number = coin_number
@@ -22,6 +24,7 @@ class CoinDataManager:
         self._volume_forward = volume_forward
         self._volume_average_days = volume_average_days
         self._coins = None
+        self._db_dir = directory or DATABASE_DIR
 
     @property
     def coins(self):
@@ -67,7 +70,7 @@ class CoinDataManager:
             dtype=np.float32
         )
 
-        connection = sqlite3.connect(DATABASE_DIR)
+        connection = sqlite3.connect(self._db_dir)
         try:
             for row_number, coin in enumerate(coins):
                 for feature in features:
@@ -155,7 +158,7 @@ class CoinDataManager:
                 (datetime.fromtimestamp(start).strftime('%Y-%m-%d %H:%M'),
                  datetime.fromtimestamp(end).strftime('%Y-%m-%d %H:%M'))
             )
-            connection = sqlite3.connect(DATABASE_DIR)
+            connection = sqlite3.connect(self._db_dir)
             try:
                 cursor = connection.cursor()
                 cursor.execute(
@@ -183,7 +186,7 @@ class CoinDataManager:
         return coins
 
     def _initialize_db(self):
-        with sqlite3.connect(DATABASE_DIR) as connection:
+        with sqlite3.connect(self._db_dir) as connection:
             cursor = connection.cursor()
             cursor.execute('CREATE TABLE IF NOT EXISTS History (date INTEGER,'
                            ' coin varchar(20), high FLOAT, low FLOAT,'
@@ -215,7 +218,7 @@ class CoinDataManager:
         """
         Add new history data into the database.
         """
-        connection = sqlite3.connect(DATABASE_DIR)
+        connection = sqlite3.connect(self._db_dir)
         try:
             cursor = connection.cursor()
             min_date = \
@@ -289,3 +292,31 @@ class CoinDataManager:
                         (c['date'], coin, c['high'], c['low'], c['open'],
                          c['close'], c['volume'], c['quoteVolume'],
                          weightedAverage))
+
+
+def coin_data_manager_init_helper(config, download=False, directory=None):
+    input_config = config["input"]
+    start = parse_time(input_config["start_date"])
+    end = parse_time(input_config["end_date"])
+    cdm = CoinDataManager(
+        coin_number=input_config["coin_number"],
+        end=int(end),
+        volume_average_days=input_config["volume_average_days"],
+        volume_forward=get_volume_forward(
+            int(end) - int(start),
+            (input_config["validation_portion"] +
+             input_config["test_portion"]),
+            input_config["portion_reversed"]
+        ),
+        directory=directory
+    )
+    if not download:
+        return cdm
+    else:
+        features = cdm.get_coin_features(
+            start=start,
+            end=end,
+            period=input_config["global_period"],
+            features=get_feature_list(input_config["feature_number"])
+        )
+        return cdm, features
