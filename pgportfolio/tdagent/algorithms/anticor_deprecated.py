@@ -28,7 +28,7 @@ class ANTICOR(TDAgent):
         self.c_version = c_version
 
 
-    def decide_by_history(self, x, last_b=None):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         window = self.window
         port = pd.DataFrame(self.history)

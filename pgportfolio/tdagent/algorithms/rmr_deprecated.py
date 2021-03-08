@@ -8,7 +8,7 @@ class RMR(OLMAR):
         super(RMR, self).__init__(window, eps)
         self.tau = tau
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         close = pd.DataFrame(self.get_close())
         nx = close.iloc[-1,:]

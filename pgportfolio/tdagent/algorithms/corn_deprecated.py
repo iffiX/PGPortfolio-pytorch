@@ -34,7 +34,7 @@ class CORN(TDAgent):
         self.rho = rho
 
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         x = self.get_last_rpv(x)
 

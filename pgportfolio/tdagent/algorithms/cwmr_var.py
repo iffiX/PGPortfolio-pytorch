@@ -27,7 +27,7 @@ class CWMR_VAR(TDAgent):
         self.sigma = np.matrix(np.eye(m) / m**2)
 
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         x = self.get_last_rpv(x)
         x = np.reshape(x, (1,x.size))
         last_b = np.reshape(last_b, (1,last_b.size))

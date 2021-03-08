@@ -18,7 +18,7 @@ class M0(TDAgent):
         self.beta = beta
         self.C = C
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         x = self.get_last_rpv(x)
         m = x.size
         if self.C is None:

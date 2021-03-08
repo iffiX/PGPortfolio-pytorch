@@ -28,10 +28,13 @@ class ONS(TDAgent):
         self.b = np.mat(np.zeros(m)).T
 
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         '''
         :param x: input matrix
         :param last_b: last portfolio
+
+        Args:
+            **kwargs:
         '''
         x = self.get_last_rpv(x)
         if self.A is None:

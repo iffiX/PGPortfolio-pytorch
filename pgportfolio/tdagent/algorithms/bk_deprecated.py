@@ -23,7 +23,7 @@ class BK(TDAgent):
         self.k = k
         self.l = l
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         history = pd.DataFrame(self.history)
         # find indices of nearest neighbors throughout history

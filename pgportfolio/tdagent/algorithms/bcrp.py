@@ -1,4 +1,3 @@
-from ..tdagent import TDAgent
 from pgportfolio.tdagent.algorithms.crp import CRP
 import numpy as np
 from scipy.optimize import minimize
@@ -20,16 +19,9 @@ class BCRP(CRP):
         weights = opt_weights(data)
         return weights
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, test_data=None, **kwargs):
         if self.last_b is None:
-            from pgportfolio.utils.trade import get_test_data
-            from pgportfolio.utils.configprocess import preprocess_config
-            import json
-            with open("pgportfolio/net_config.json") as file:
-                config = json.load(file)
-            config = preprocess_config(config)
-            data = get_test_data(config)
-            self.last_b = self.get_weight(data.T)
+            self.last_b = self.get_weight(test_data.T)
 
         return self.last_b
 

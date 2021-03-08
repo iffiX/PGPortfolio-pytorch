@@ -7,10 +7,13 @@ class UBAH(TDAgent):
         super(UBAH, self).__init__()
         self.b = b
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         '''return new portfolio vector
         :param x: input matrix
         :param last_b: last portfolio weight vector
+
+        Args:
+            **kwargs:
         '''
         if self.b is None:
             self.b = np.ones(12) / 12

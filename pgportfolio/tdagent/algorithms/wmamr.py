@@ -24,7 +24,7 @@ class WMAMR(PAMR):
         self.window = window
 
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         xx = np.mean(self.history[-self.window:,], axis=0)
         # calculate return prediction

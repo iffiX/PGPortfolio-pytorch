@@ -18,7 +18,7 @@ class RMR(TDAgent):
         self.W = W
         self.b = b
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         data_close = self.get_close()
         b = self.update(data_close, self.history, last_b, self.eps, self.W)

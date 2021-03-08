@@ -9,7 +9,7 @@ import numpy as np
 import datetime
 from pgportfolio.utils.indicator import max_drawdown, sharpe, positive_count, negative_count, moving_accumulate
 from pgportfolio.utils.configprocess import parse_time, check_input_same
-from pgportfolio.utils.shortcut import execute_backtest
+from pgportfolio.trade.shortcut import execute_backtest
 
 # the dictionary of name of indicators mapping to the function of related indicators
 # input is portfolio changes
@@ -40,6 +40,7 @@ NAMES = {"best": "Best Stock (Benchmark)",
          "m0": "M0",
          "wmamr": "WMAMR"
          }
+
 
 def plot_backtest(config, algos, labels=None):
     """

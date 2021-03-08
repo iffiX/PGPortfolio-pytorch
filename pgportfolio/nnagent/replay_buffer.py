@@ -1,6 +1,24 @@
 import torch as t
 import numpy as np
-from typing import Union
+from typing import Union, Iterable
+from torch.utils.data import IterableDataset
+from pgportfolio.marketdata.coin_data_manager import CoinDataManager
+from pgportfolio.utils.misc import parse_time, get_volume_forward, \
+    get_feature_list
+
+
+class PGPDataset(IterableDataset):
+    """
+    A wrapper over PGPBuffer.next_batch, so it can be used by pytorch
+    Dataloader.
+    """
+
+    def __init__(self, buffer: 'PGPBuffer', source: str) -> None:
+        self.buffer = buffer
+        self.source = source
+
+    def __iter__(self) -> Iterable:
+        return self.buffer.next_batch(self.source)
 
 
 class PGPBuffer:
@@ -61,7 +79,7 @@ class PGPBuffer:
     def val_num(self):
         return len(self._val_idx)
 
-    def get_training_set(self):
+    def get_train_set(self):
         """
         Returns:
             All samples from the train set.
@@ -81,6 +99,15 @@ class PGPBuffer:
             All samples from the validation set.
         """
         return self._pack_samples(self._val_idx)
+
+    def get_train_dataset(self):
+        return PGPDataset(self, "train")
+
+    def get_test_dataset(self):
+        return PGPDataset(self, "test")
+
+    def get_val_dataset(self):
+        return PGPDataset(self, "val")
 
     def append_experience(self,
                           coin_features: np.ndarray,
@@ -110,7 +137,7 @@ class PGPBuffer:
         )
         self._pvm = t.cat([self._pvm, pvm.to(device)])
 
-    def next_batch(self):
+    def next_batch(self, source="train"):
         """
         Returns:
              The next batch of training sample.
@@ -120,8 +147,18 @@ class PGPBuffer:
               "last_w:" a numpy array with shape [batch_size, assets];
               "setw": a callback function used to update the PVM memory.
         """
-        start_idx = self._train_idx[0]
-        end_idx = self._train_idx[-1]
+        if source == "train":
+            start_idx = self._train_idx[0]
+            end_idx = self._train_idx[-1]
+        elif source == "test":
+            start_idx = self._test_idx[0]
+            end_idx = self._test_idx[-1]
+        elif source == "val":
+            start_idx = self._val_idx[0]
+            end_idx = self._val_idx[-1]
+        else:
+            raise ValueError("Unknown source")
+
         if self._is_unordered:
             batch_idx = [
                 self._sample_geometric(start_idx, end_idx, self._sample_bias)
@@ -140,7 +177,8 @@ class PGPBuffer:
         last_w = self._pvm[index - 1, :]
 
         def setw(w):
-            self._pvm[index, :] = w
+            assert t.is_tensor(w)
+            self._pvm[index, :] = w.to(self._pvm.device)
 
         batch = t.stack([
             self._coin_features[:, :, idx:idx + self._window_size + 1]
@@ -208,3 +246,39 @@ class PGPBuffer:
         val_idx = val_idx[:-(window_size + 1)]
 
         return train_idx, test_idx, val_idx
+
+
+def buffer_init_helper(config, device):
+    input_config = config["input"]
+    train_config = config["train"]
+
+    start = parse_time(input_config["start_date"])
+    end = parse_time(input_config["end_date"])
+    cdm = CoinDataManager(
+        coin_number=input_config["coin_number"],
+        end=int(end),
+        volume_average_days=input_config["volume_average_days"],
+        volume_forward=get_volume_forward(
+            int(end) - int(start),
+            (input_config["validation_portion"] +
+             input_config["test_portion"]),
+            input_config["portion_reversed"]
+        )
+    )
+    buffer = PGPBuffer(
+        cdm.get_coin_features(
+            start=start,
+            end=end,
+            period=input_config["global_period"],
+            features=get_feature_list(input_config["feature_number"])
+        ),
+        batch_size=train_config["batch_size"],
+        window_size=input_config["window_size"],
+        test_portion=input_config["test_portion"],
+        validation_portion=input_config["validation_portion"],
+        sample_bias=train_config["buffer_biased"],
+        portion_reversed=input_config["portion_reversed"],
+        is_unordered=input_config["is_unordered"],
+        device=device,
+    )
+    return cdm, buffer

@@ -15,7 +15,7 @@ class BK(TDAgent):
         self.exp_ret = np.ones((K,L+1))
         self.exp_w = exp_w
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
 
         data = self.history

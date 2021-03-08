@@ -14,7 +14,6 @@ def fill_default(config):
 def fill_train_config(train_config):
     set_missing(train_config, "fast_train", True)
     set_missing(train_config, "decay_rate", 1.0)
-    set_missing(train_config, "decay_steps", 50000)
 
 
 def fill_input_default(input_config):
@@ -61,18 +60,10 @@ def set_missing(config, name, value):
         config[name] = value
 
 
-def load_config(index=None):
-    """
-    @:param index: if None, load the default in pgportfolio;
-     if a integer, load the config under train_package
-    """
-    if index:
-        with open(rootpath+"/train_package/" + str(index) + "/net_config.json") as file:
-            config = json.load(file)
-    else:
-        with open(rootpath+"/pgportfolio/" + "net_config.json") as file:
-            config = json.load(file)
-    return preprocess_config(config)
+def load_config(path):
+    with open(path) as file:
+        config = json.load(file)
+    return fill_default(config)
 
 
 def check_input_same(config1, config2):

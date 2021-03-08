@@ -24,7 +24,7 @@ class EG(TDAgent):
     def init_pw(self, x):
         self.b = np.ones(x.size)
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         x = self.history[-1,:].ravel()
         if self.last_b is None:

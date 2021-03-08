@@ -8,7 +8,7 @@ class SP(TDAgent):
         self.gamma = gamma
         self.last_b = last_b
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         nx = self.history[-1,:].ravel()
         if self.last_b is None:

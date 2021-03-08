@@ -23,7 +23,7 @@ class TDAgent(object):
         return self._agent
 
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         '''calculate new portfolio weight vector.
         :param x: input x
         :last_b: last portfolio weight vector

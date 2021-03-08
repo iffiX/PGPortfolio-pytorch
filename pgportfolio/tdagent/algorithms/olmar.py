@@ -32,7 +32,7 @@ class OLMAR(TDAgent):
         #self.count = count
         #self.last_b = last_b
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         nx = self.get_last_rpv(x)
         #if self.last_b is None:

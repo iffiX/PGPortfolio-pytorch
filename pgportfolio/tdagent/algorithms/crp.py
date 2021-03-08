@@ -17,7 +17,7 @@ class CRP(TDAgent):
         super(CRP, self).__init__()
         self.b = b
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         x = self.get_last_rpv(x)
 
         # init b to default if necessary

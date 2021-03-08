@@ -16,7 +16,7 @@ class ANTICOR2(TDAgent):
         self.exp_w2 = np.ones((window-1, window-1)) / (window-1)
         self.data_day = data_day
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         self.record_history(x)
         n, m = self.history.shape
 

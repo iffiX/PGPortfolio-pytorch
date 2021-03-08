@@ -36,7 +36,7 @@ class UP(TDAgent):
         self.W = (self.W - 1./m) * stretch + 1./m
 
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         # calculate new wealth of all CRPs
         x = self.get_last_rpv(x)
         x = np.reshape(x, (1,x.size))

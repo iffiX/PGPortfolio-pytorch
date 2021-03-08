@@ -39,7 +39,7 @@ class PAMR(TDAgent):
         self.variant = variant
         self.b = b
 
-    def decide_by_history(self, x, last_b):
+    def decide_by_history(self, x, last_b, **kwargs):
         x = self.get_last_rpv(x)
         # calculate return prediction
         if self.b is None:

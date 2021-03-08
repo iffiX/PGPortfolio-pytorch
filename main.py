@@ -8,8 +8,8 @@ from datetime import datetime
 
 from pgportfolio.utils.configprocess import preprocess_config
 from pgportfolio.utils.configprocess import load_config
-from pgportfolio.utils.trade import save_test_data
-from pgportfolio.utils.shortcut import execute_backtest
+from pgportfolio.trade.trade import save_test_data
+from pgportfolio.trade.shortcut import execute_backtest
 from pgportfolio.utils import plot
 
 
@@ -57,10 +57,7 @@ def main():
         else:
             for folder in options.folder:
                 raise NotImplementedError()
-    elif options.mode == "generate":
-        import pgportfolio.autotrain.generate as generate
-        logging.basicConfig(level=logging.INFO)
-        generate.add_packages(load_config(), int(options.repeat))
+
     elif options.mode == "download_data":
         from pgportfolio.nnagent.datamatrices import DataMatrices
         with open("./pgportfolio/net_config.json") as file:
