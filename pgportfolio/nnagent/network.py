@@ -1,150 +1,344 @@
+import numpy as np
 import torch as t
+import torch.nn as nn
 
 
-class NeuralNetWork(t.nn.Module):
-    def __init__(self, feature_number, rows, columns, layers, device):
-        tf_config = tf.ConfigProto()
-        self.session = tf.Session(config=tf_config)
-        if device == "cpu":
-            tf_config.gpu_options.per_process_gpu_memory_fraction = 0
+def get_conv_output_size(shape, kernel_size, stride, padding):
+    # shape is [N, C, H, W] format.
+    # See https://stackoverflow.com/a/37674568
+    if padding == "same":
+        out_height = int(np.ceil(float(shape[2]) / float(stride[0])))
+        out_width = int(np.ceil(float(shape[3]) / float(stride[1])))
+    elif padding == "valid":
+        out_height = int(np.ceil(
+            float(shape[2] - kernel_size[0] + 1) / float(stride[0])
+        ))
+        out_width = int(np.ceil(
+            float(shape[3] - kernel_size[1] + 1) / float(stride[1])
+        ))
+    else:
+        raise ValueError("Unknown padding: %s" % padding)
+    return [shape[0], shape[1], out_height, out_width]
+
+
+def get_conv_same_pad_size(kernel_size, stride):
+    # see 
+    # https://discuss.pytorch.org/t/same-padding-equivalent-in-pytorch/85121/4
+    # The total padding applied along the height and width is computed as:
+    if kernel_size[0] % stride[1] == 0:
+        pad_along_height = max(kernel_size[0] - stride[0], 0)
+    else:
+        pad_along_height = max(kernel_size[0] - (kernel_size[0] % stride[0]), 0)
+    if kernel_size[1] % stride[2] == 0:
+        pad_along_width = max(kernel_size[1] - stride[1], 0)
+    else:
+        pad_along_width = max(kernel_size[1] - (kernel_size[1] % stride[1]), 0)
+
+    print(pad_along_height, pad_along_width)
+
+    # Finally, the padding on the top, bottom, left and right are:
+
+    pad_top = pad_along_height // 2
+    pad_bottom = pad_along_height - pad_top
+    pad_left = pad_along_width // 2
+    pad_right = pad_along_width - pad_left
+    return pad_left, pad_right, pad_top, pad_bottom
+
+
+def dense(shape, layer_conf):
+    assert len(shape) == 2, \
+        "Dense layer input shape incorrect: {}".format(shape)
+    layer = nn.Sequential(
+        nn.Linear(in_features=shape[1],
+                  out_features=layer_conf["neuron_number"]),
+        getattr(nn.modules.activation,
+                layer_conf["activation_function"])()
+    )
+    shape = [shape[0], layer_conf["neuron_number"]]
+    return shape, layer
+
+
+def dropout(shape, layer_conf):
+    return shape, nn.Dropout(p=layer_conf["keep_probability"])
+
+
+def EIIE_dense(shape, layer_conf):
+    # shape: [batch, feature, coin, window]
+    assert len(shape) == 4, \
+        "EIIE dense layer input shape incorrect: {}".format(shape)
+    layer = nn.Sequential(
+        nn.Conv2d(
+            in_channels=shape[1],
+            out_channels=layer_conf["filter_number"],
+            kernel_size=(1, shape[3]),
+            stride=(1, 1)
+        ),
+        getattr(nn.modules.activation,
+                layer_conf["activation_function"])()
+    )
+    shape = [shape[0], layer_conf["filter_number"], shape[2], 1]
+    return shape, layer
+
+
+def conv2d(shape, layer_conf):
+    # shape: [batch, feature, coin, window]
+    assert len(shape) == 4, \
+        "Conv2d layer input shape incorrect: {}".format(shape)
+    if layer_conf["padding"] == "same":
+        layer = nn.Sequential(
+            nn.ZeroPad2d(get_conv_same_pad_size(layer_conf["filter_shape"],
+                                                layer_conf["strides"])),
+            nn.Conv2d(in_channels=shape[1],
+                      out_channels=layer_conf["filter_number"],
+                      kernel_size=tuple(layer_conf["filter_shape"]),
+                      stride=tuple(layer_conf["strides"])),
+            getattr(nn.modules.activation,
+                    layer_conf["activation_function"])()
+        )
+    else:
+        layer = nn.Sequential(
+            nn.Conv2d(in_channels=shape[1],
+                      out_channels=layer_conf["filter_number"],
+                      kernel_size=tuple(layer_conf["filter_shape"]),
+                      stride=tuple(layer_conf["strides"])),
+            getattr(nn.modules.activation,
+                    layer_conf["activation_function"])()
+        )
+    shape = get_conv_output_size(shape,
+                                 layer_conf["filter_shape"],
+                                 layer_conf["strides"],
+                                 layer_conf["padding"])
+    return shape, layer
+
+
+def max_pool_2d(shape, layer_conf):
+    # shape: [batch, feature, coin, window]
+    assert len(shape) == 4, \
+        "MaxPool2d layer input shape incorrect: {}".format(shape)
+    if layer_conf["padding"] == "same":
+        layer = nn.Sequential(
+            nn.ZeroPad2d(get_conv_same_pad_size(layer_conf["filter_shape"],
+                                                layer_conf["strides"])),
+            nn.MaxPool2d(kernel_size=tuple(layer_conf["filter_shape"]),
+                         stride=tuple(layer_conf["strides"])),
+        )
+    else:
+        layer = nn.MaxPool2d(kernel_size=tuple(layer_conf["filter_shape"]),
+                             stride=tuple(layer_conf["strides"]))
+    shape = get_conv_output_size(shape,
+                                 layer_conf["filter_shape"],
+                                 layer_conf["strides"],
+                                 layer_conf["padding"])
+    return shape, layer
+
+
+def avg_pool_2d(shape, layer_conf):
+    # shape: [batch, feature, coin, window]
+    assert len(shape) == 4, \
+        "AvgPool2d layer input shape incorrect: {}".format(shape)
+    if layer_conf["padding"] == "same":
+        layer = nn.Sequential(
+            nn.ZeroPad2d(get_conv_same_pad_size(layer_conf["filter_shape"],
+                                                layer_conf["strides"])),
+            nn.AvgPool2d(kernel_size=tuple(layer_conf["filter_shape"]),
+                         stride=tuple(layer_conf["strides"])),
+        )
+    else:
+        layer = nn.AvgPool2d(kernel_size=tuple(layer_conf["filter_shape"]),
+                             stride=tuple(layer_conf["strides"]))
+    shape = get_conv_output_size(shape,
+                                 layer_conf["filter_shape"],
+                                 layer_conf["strides"],
+                                 layer_conf["padding"])
+    return shape, layer
+
+
+def local_response_normalization(shape):
+    layer = nn.LocalResponseNorm(5)
+    return shape, layer
+
+
+def EIIE_recurrent(shape, layer_conf):
+    # shape: [batch, feature, coin, window]
+    assert len(shape) == 4, \
+        "EIIE-recurrent layer input shape incorrect: {}".format(shape)
+    layer = EIIE_RecurrentModule(shape, layer_conf)
+    shape = [shape[0], layer_conf["neuron_number"], shape[2], shape[3]]
+    return shape, layer
+
+
+def output_with_w(shape):
+    # shape: [batch, feature, coin, window]
+    assert len(shape) == 4, \
+        "Output-with-w layer input shape incorrect: {}".format(shape)
+    layer = OutputWithWModule(shape)
+    shape = [shape[0], shape[2] + 1]
+    return shape, layer
+
+
+def EIIE_output(shape):
+    # shape: [batch, feature, coin, window]
+    assert len(shape) == 4, \
+        "EIIE-output layer input shape incorrect: {}".format(shape)
+    layer = EIIE_OutputModule(shape)
+    shape = [shape[0], shape[2] + 1]
+    return shape, layer
+
+
+def EIIE_output_with_w(shape):
+    # shape: [batch, feature, coin, window]
+    assert len(shape) == 4, \
+        "EIIE-output-with-w layer input shape incorrect: {}".format(shape)
+    layer = EIIE_OutputWithWModule(shape)
+    shape = [shape[0], shape[2] + 1]
+    return shape, layer
+
+
+class OutputWithWModule(nn.Module):
+    def __init__(self, shape):
+        # shape: [batch, feature, coin, window]
+        super(OutputWithWModule, self).__init__()
+        self.fc = nn.Linear(in_features=np.product(shape[1:]) + shape[2] + 1,
+                            out_features=shape[2] + 1)
+        self.sm = nn.Softmax(dim=1)
+
+    def forward(self, input, last_w):
+        return self.sm(self.fc(
+            t.cat([input.flatten(start_dim=1), last_w], dim=1)
+        ))
+
+
+class EIIE_OutputModule(nn.Module):
+    def __init__(self, shape):
+        # shape: [batch, feature, coin, window]
+        super(EIIE_OutputModule, self).__init__()
+        self.conv = nn.Conv2d(in_channels=shape[1],
+                              out_channels=1,
+                              kernel_size=(1, shape[3]))
+        self.sm = nn.Softmax(dim=1)
+
+    def forward(self, input):
+        btc_bias = t.ones((input.shape[0], 1), device=self.conv.device)
+        return self.sm(
+            t.cat([btc_bias, self.conv(input)[:, :, 0, 0]], dim=1)
+        )
+
+
+class EIIE_OutputWithWModule(nn.Module):
+    def __init__(self, shape):
+        # shape: [batch, feature, coin, window]
+        super(EIIE_OutputWithWModule, self).__init__()
+        self.conv = nn.Conv2d(in_channels=shape[1] * shape[3] + 1,
+                              out_channels=1,
+                              kernel_size=(1, 1))
+        self.shape = shape
+
+    def forward(self, input, last_w):
+        input = t.cat([input.view(-1,
+                                  self.shape[1] * self.shape[3],
+                                  self.shape[2], 1),
+                       last_w.to(input.device)
+                      .view([-1, 1, self.shape[2], 1])], dim=1)
+        input = self.conv(input)
+        btc_bias = t.zeros((input.shape[0], 1), device=self.conv.device)
+        return self.sm(
+            t.cat([btc_bias, input[:, :, 0, 0]], dim=1)
+        )
+
+
+class EIIE_RecurrentModule(nn.Module):
+    def __init__(self, shape, layer_conf):
+        # shape: [batch, feature, coin, window]
+        super(EIIE_RecurrentModule, self).__init__()
+        self.shape = shape
+        self.hidden_size = layer_conf["neuron_number"]
+        if layer_conf["type"] == "EIIE_LSTM":
+            self.rec_mods = [
+                nn.LSTM(input_size=shape[1],
+                        hidden_size=layer_conf["neuron_number"],
+                        dropout=layer_conf["dropouts"])
+            ]
         else:
-            tf_config.gpu_options.per_process_gpu_memory_fraction = 0.2
-        self.input_num = tf.placeholder(tf.int32, shape=[])
-        self.input_tensor = tf.placeholder(tf.float32, shape=[None, feature_number, rows, columns])
-        self.previous_w = tf.placeholder(tf.float32, shape=[None, rows])
-        self._rows = rows
-        self._columns = columns
+            self.rec_mods = [
+                nn.RNN(input_size=shape[1],
+                       hidden_size=layer_conf["neuron_number"],
+                       dropout=layer_conf["dropouts"])
+            ]
 
-        self.layers_dict = {}
-        self.layer_count = 0
+    def forward(self, input: t.Tensor):
+        # now input becomes [coin, window, batch, feature]
+        input = input.permute(2, 3, 0, 1)
+        results = [self.rec_mods[i](input[i]) for i in range(self.shape[2])]
+        input = t.stack(results)
+        # turns back to [batch, hidden, coin, window]
+        input = input.permute(2, 3, 0, 1)
+        return input.view([-1, self.hidden_size, self.shape[2], self.shape[3]])
 
-        self.output = self._build_network(layers)
+
+class CNN(nn.Module):
+    def __init__(self, feature_number, coin_number, window_size, layers,
+                 device):
+        # input_shape (features, rows, columns)
+        # or (features, coin_number, window_size)
+        super(CNN, self).__init__()
+        self.feature_number = feature_number
+        self.coin_number = coin_number
+        self.window_size = window_size
+        self._build_network(layers)
+        self.layers = []
+        self.layer_types = []
+
+    def forward(self, x, last_w=None):
+        # normalize all features in all periods
+        # with "closing price" (dim 0) feature from the latest period
+        # shape: [batch, feature, coin, time]
+        x = x / x[:, 0, :, -1]
+        for layer in self.layers[:-2]:
+            x = layer(x)
+        if "WithW" in self.layer_types[-1]:
+            return self.layers[-1](x, last_w)
+        else:
+            return self.layers[-1](x)
 
     def _build_network(self, layers):
-        pass
+        # corresponds to [N, C, H, W]
+        shape = [None, self.feature_number, self.coin_number, self.window_size]
 
-
-class CNN(t.nn.Module):
-    # input_shape (features, rows, columns)
-    def __init__(self, feature_number, rows, columns, layers, device):
-        NeuralNetWork.__init__(self, feature_number, rows, columns, layers, device)
-
-    def add_layer_to_dict(self, layer_type, tensor, weights=True):
-
-        self.layers_dict[layer_type + '_' + str(self.layer_count) + '_activation'] = tensor
-        self.layer_count += 1
-
-    # grenrate the operation, the forward computaion
-    def _build_network(self, layers):
-        network = tf.transpose(self.input_tensor, [0, 2, 3, 1])
-        # [batch, assets, window, features]
-        network = network / network[:, :, -1, 0, None, None]
-        for layer_number, layer in enumerate(layers):
+        for layer in layers:
+            self.layer_types.append(layer["type"])
             if layer["type"] == "DenseLayer":
-                network = tflearn.layers.core.fully_connected(network,
-                                                              int(layer["neuron_number"]),
-                                                              layer["activation_function"],
-                                                              regularizer=layer["regularizer"],
-                                                              weight_decay=layer["weight_decay"] )
-                self.add_layer_to_dict(layer["type"], network)
+                shape, l = dense(shape, layer)
+                self.layers.append(l)
             elif layer["type"] == "DropOut":
-                network = tflearn.layers.core.dropout(network, layer["keep_probability"])
+                shape, l = dropout(shape, layer)
+                self.layers.append(l)
             elif layer["type"] == "EIIE_Dense":
-                width = network.get_shape()[2]
-                network = tflearn.layers.conv_2d(network, int(layer["filter_number"]),
-                                                 [1, width],
-                                                 [1, 1],
-                                                 "valid",
-                                                 layer["activation_function"],
-                                                 regularizer=layer["regularizer"],
-                                                 weight_decay=layer["weight_decay"])
-                self.add_layer_to_dict(layer["type"], network)
+                shape, l = EIIE_dense(shape, layer)
+                self.layers.append(l)
             elif layer["type"] == "ConvLayer":
-                network = tflearn.layers.conv_2d(network, int(layer["filter_number"]),
-                                                 allint(layer["filter_shape"]),
-                                                 allint(layer["strides"]),
-                                                 layer["padding"],
-                                                 layer["activation_function"],
-                                                 regularizer=layer["regularizer"],
-                                                 weight_decay=layer["weight_decay"])
-                self.add_layer_to_dict(layer["type"], network)
+                shape, l = conv2d(shape, layer)
+                self.layers.append(l)
             elif layer["type"] == "MaxPooling":
-                network = tflearn.layers.conv.max_pool_2d(network, layer["strides"])
+                shape, l = max_pool_2d(shape, layer)
+                self.layers.append(l)
             elif layer["type"] == "AveragePooling":
-                network = tflearn.layers.conv.avg_pool_2d(network, layer["strides"])
+                shape, l = avg_pool_2d(shape, layer)
+                self.layers.append(l)
             elif layer["type"] == "LocalResponseNormalization":
-                network = tflearn.layers.normalization.local_response_normalization(network)
+                shape, l = local_response_normalization(shape)
+                self.layers.append(l)
+            elif layer["type"] in ("EIIE_LSTM", "EIIE_RNN"):
+                shape, l = EIIE_recurrent(shape)
+                self.layers.append(l)
             elif layer["type"] == "EIIE_Output":
-                width = network.get_shape()[2]
-                network = tflearn.layers.conv_2d(network, 1, [1, width], padding="valid",
-                                                 regularizer=layer["regularizer"],
-                                                 weight_decay=layer["weight_decay"])
-                self.add_layer_to_dict(layer["type"], network)
-                network = network[:, :, 0, 0]
-                btc_bias = tf.ones((self.input_num, 1))
-                self.add_layer_to_dict(layer["type"], network)
-                network = tf.concat([btc_bias, network], 1)
-                network = tflearn.layers.core.activation(network, activation="softmax")
-                self.add_layer_to_dict(layer["type"], network, weights=False)
+                shape, l = EIIE_output(shape)
+                self.layers.append(l)
             elif layer["type"] == "Output_WithW":
-                network = tflearn.flatten(network)
-                network = tf.concat([network,self.previous_w], axis=1)
-                network = tflearn.fully_connected(network, self._rows+1,
-                                                  activation="softmax",
-                                                  regularizer=layer["regularizer"],
-                                                  weight_decay=layer["weight_decay"])
+                shape, l = output_with_w(shape)
+                self.layers.append(l)
             elif layer["type"] == "EIIE_Output_WithW":
-                width = network.get_shape()[2]
-                height = network.get_shape()[1]
-                features = network.get_shape()[3]
-                network = tf.reshape(network, [self.input_num, int(height), 1, int(width*features)])
-                w = tf.reshape(self.previous_w, [-1, int(height), 1, 1])
-                network = tf.concat([network, w], axis=3)
-                network = tflearn.layers.conv_2d(network, 1, [1, 1], padding="valid",
-                                                 regularizer=layer["regularizer"],
-                                                 weight_decay=layer["weight_decay"])
-                self.add_layer_to_dict(layer["type"], network)
-                network = network[:, :, 0, 0]
-                #btc_bias = tf.zeros((self.input_num, 1))
-                btc_bias = tf.get_variable("btc_bias", [1, 1], dtype=tf.float32,
-                                       initializer=tf.zeros_initializer)
-                # self.add_layer_to_dict(layer["type"], network, weights=False)
-                btc_bias = tf.tile(btc_bias, [self.input_num, 1])
-                network = tf.concat([btc_bias, network], 1)
-                self.voting = network
-                self.add_layer_to_dict('voting', network, weights=False)
-                network = tflearn.layers.core.activation(network, activation="softmax")
-                self.add_layer_to_dict('softmax_layer', network, weights=False)
-
-            elif layer["type"] == "EIIE_LSTM" or\
-                            layer["type"] == "EIIE_RNN":
-                network = tf.transpose(network, [0, 2, 3, 1])
-                resultlist = []
-                reuse = False
-                for i in range(self._rows):
-                    if i > 0:
-                        reuse = True
-                    if layer["type"] == "EIIE_LSTM":
-                        result = tflearn.layers.lstm(network[:, :, :, i],
-                                                     int(layer["neuron_number"]),
-                                                     dropout=layer["dropouts"],
-                                                     scope="lstm"+str(layer_number),
-                                                     reuse=reuse)
-                    else:
-                        result = tflearn.layers.simple_rnn(network[:, :, :, i],
-                                                           int(layer["neuron_number"]),
-                                                           dropout=layer["dropouts"],
-                                                           scope="rnn"+str(layer_number),
-                                                           reuse=reuse)
-                    resultlist.append(result)
-                network = tf.stack(resultlist)
-                network = tf.transpose(network, [1, 0, 2])
-                network = tf.reshape(network, [-1, self._rows, 1, int(layer["neuron_number"])])
+                shape, l = EIIE_output_with_w(shape)
+                self.layers.append(l)
             else:
-                raise ValueError("the layer {} not supported.".format(layer["type"]))
-        return network
-
-
-def allint(l):
-    return [int(i) for i in l]
-
+                raise ValueError(
+                    "Layer {} is not supported.".format(layer["type"]))

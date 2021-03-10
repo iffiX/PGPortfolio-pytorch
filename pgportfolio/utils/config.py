@@ -1,5 +1,3 @@
-import time
-from datetime import datetime
 import json
 
 
@@ -31,22 +29,18 @@ def fill_layers_default(layers):
             set_missing(layer, "padding", "valid")
             set_missing(layer, "strides", [1, 1])
             set_missing(layer, "activation_function", "relu")
-            set_missing(layer, "regularizer", None)
             set_missing(layer, "weight_decay", 0.0)
         elif layer["type"] == "EIIE_Dense":
             set_missing(layer, "activation_function", "relu")
-            set_missing(layer, "regularizer", None)
             set_missing(layer, "weight_decay", 0.0)
         elif layer["type"] == "DenseLayer":
             set_missing(layer, "activation_function", "relu")
-            set_missing(layer, "regularizer", None)
             set_missing(layer, "weight_decay", 0.0)
         elif layer["type"] == "EIIE_LSTM" or layer["type"] == "EIIE_RNN":
             set_missing(layer, "dropouts", None)
         elif layer["type"] == "EIIE_Output" or\
                 layer["type"] == "Output_WithW" or\
                 layer["type"] == "EIIE_Output_WithW":
-            set_missing(layer, "regularizer", None)
             set_missing(layer, "weight_decay", 0.0)
         elif layer["type"] == "DropOut":
             pass
@@ -82,4 +76,3 @@ def save_config(config, path):
 #         return False
 #     else:
 #         return True
-

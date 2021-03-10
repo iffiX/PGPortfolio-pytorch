@@ -142,8 +142,8 @@ class PGPBuffer:
         Returns:
              The next batch of training sample.
              The sample is a dictionary with keys:
-              "X": input data;
-              "y": future relative price;
+              "X": input data [batch, feature, coin, time];
+              "y": future relative price [batch, norm_feature, coin, time];
               "last_w:" a numpy array with shape [batch_size, assets];
               "setw": a callback function used to update the PVM memory.
         """
