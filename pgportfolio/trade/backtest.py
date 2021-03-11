@@ -35,9 +35,9 @@ class BackTest:
             self._rolling_trainer = RollingTrainer(
                 config, online=online, directory=directory
             )
-            self._coin_name_list = self._rolling_trainer.coin_list
+            self._coin_name_list = self._rolling_trainer.coins
             self._agent = self._rolling_trainer
-            test_set = self._rolling_trainer.coins
+            test_set = self._rolling_trainer.test_set
         elif agent_algorithm in ALGOS or agent_algorithm == "not_used":
             config = config.copy()
             config["input"]["feature_number"] = 1

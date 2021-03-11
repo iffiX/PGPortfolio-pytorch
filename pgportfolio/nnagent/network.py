@@ -218,7 +218,7 @@ class EIIE_OutputModule(nn.Module):
         self.sm = nn.Softmax(dim=1)
 
     def forward(self, input):
-        btc_bias = t.ones((input.shape[0], 1), device=self.conv.device)
+        btc_bias = t.ones((input.shape[0], 1), device=input.device)
         return self.sm(
             t.cat([btc_bias, self.conv(input)[:, :, 0, 0]], dim=1)
         )
@@ -231,18 +231,20 @@ class EIIE_OutputWithWModule(nn.Module):
         self.conv = nn.Conv2d(in_channels=shape[1] * shape[3] + 1,
                               out_channels=1,
                               kernel_size=(1, 1))
+        self.sm = nn.Softmax(dim=1)
         self.shape = shape
 
     def forward(self, input, last_w):
-        input = t.cat([input.view(-1,
-                                  self.shape[1] * self.shape[3],
-                                  self.shape[2], 1),
+        # first permute input to [batch, feature, window, coin]
+        # then flatten new dim 1, 2: (feature, window)
+        input = t.cat([input.permute(0, 1, 3, 2)
+                       .flatten(start_dim=1, end_dim=2).unsqueeze(-1),
                        last_w.to(input.device)
                       .view([-1, 1, self.shape[2], 1])], dim=1)
         input = self.conv(input)
-        btc_bias = t.zeros((input.shape[0], 1), device=self.conv.device)
+        btc_bias = t.zeros((input.shape[0], 1), device=input.device)
         return self.sm(
-            t.cat([btc_bias, input[:, :, 0, 0]], dim=1)
+            t.cat([btc_bias, input[:, 0, :, 0]], dim=1)
         )
 
 
@@ -276,24 +278,23 @@ class EIIE_RecurrentModule(nn.Module):
 
 
 class CNN(nn.Module):
-    def __init__(self, feature_number, coin_number, window_size, layers,
-                 device):
+    def __init__(self, feature_number, coin_number, window_size, layers):
         # input_shape (features, rows, columns)
         # or (features, coin_number, window_size)
         super(CNN, self).__init__()
         self.feature_number = feature_number
         self.coin_number = coin_number
         self.window_size = window_size
-        self._build_network(layers)
         self.layers = []
         self.layer_types = []
+        self._build_network(layers)
 
     def forward(self, x, last_w=None):
         # normalize all features in all periods
         # with "closing price" (dim 0) feature from the latest period
         # shape: [batch, feature, coin, time]
-        x = x / x[:, 0, :, -1]
-        for layer in self.layers[:-2]:
+        x = x / x[:, 0, None, :, -1, None]
+        for layer in self.layers[:-1]:
             x = layer(x)
         if "WithW" in self.layer_types[-1]:
             return self.layers[-1](x, last_w)
@@ -328,7 +329,7 @@ class CNN(nn.Module):
                 shape, l = local_response_normalization(shape)
                 self.layers.append(l)
             elif layer["type"] in ("EIIE_LSTM", "EIIE_RNN"):
-                shape, l = EIIE_recurrent(shape)
+                shape, l = EIIE_recurrent(shape, layer)
                 self.layers.append(l)
             elif layer["type"] == "EIIE_Output":
                 shape, l = EIIE_output(shape)
@@ -342,3 +343,7 @@ class CNN(nn.Module):
             else:
                 raise ValueError(
                     "Layer {} is not supported.".format(layer["type"]))
+
+        for i, (layer, layer_t) in \
+            enumerate(zip(self.layers, self.layer_types)):
+            self.add_module("layer_{}_{}".format(i, layer_t), layer)

@@ -1,4 +1,5 @@
 import torch as t
+import torch.nn as nn
 import numpy as np
 from typing import Union, Iterable
 from torch.utils.data import IterableDataset
@@ -18,10 +19,13 @@ class PGPDataset(IterableDataset):
         self.source = source
 
     def __iter__(self) -> Iterable:
+        return self
+
+    def __next__(self):
         return self.buffer.next_batch(self.source)
 
 
-class PGPBuffer:
+class PGPBuffer(nn.Module):
     def __init__(self,
                  coin_features: np.ndarray,
                  batch_size=50,
@@ -44,15 +48,17 @@ class PGPBuffer:
                               else the order is (test, train).
             device: Pytorch device to store information on.
         """
+        super(PGPBuffer, self).__init__()
         assert coin_features.ndim == 3
         coin_num = coin_features.shape[1]
         period_num = coin_features.shape[2]
 
-        self._coin_features = t.tensor(coin_features, device=device)
+        coin_features = t.tensor(coin_features, device=device)
 
         # portfolio vector memory
-        self._pvm = t.full([period_num, coin_num], 1.0 / coin_num,
-                           device=device)
+        pvm = t.full([period_num, coin_num], 1.0 / coin_num, device=device)
+        self.register_buffer("_coin_features", coin_features, True)
+        self.register_buffer("_pvm", pvm, True)
 
         self._batch_size = batch_size
         self._window_size = window_size
@@ -143,7 +149,7 @@ class PGPBuffer:
              The next batch of training sample.
              The sample is a dictionary with keys:
               "X": input data [batch, feature, coin, time];
-              "y": future relative price [batch, norm_feature, coin, time];
+              "y": future relative price [batch, norm_feature, coin];
               "last_w:" a numpy array with shape [batch_size, assets];
               "setw": a callback function used to update the PVM memory.
         """
@@ -178,16 +184,16 @@ class PGPBuffer:
 
         def setw(w):
             assert t.is_tensor(w)
-            self._pvm[index, :] = w.to(self._pvm.device)
+            self._pvm[index, :] = w.to(self._pvm.device).detach()
 
         batch = t.stack([
             self._coin_features[:, :, idx:idx + self._window_size + 1]
             for idx in index
         ])
-        # features
+        # features, [batch, feature, coin, time]
         X = batch[:, :, :, :-1]
-        # price relative vector
-        y = (batch[:, :, :, -1] / batch[:, 0, :, -2]).squeeze(-1)
+        # price relative vector, [batch, norm_feature, coin]
+        y = batch[:, :, :, -1] / batch[:, 0, None, :, -2]
         return {"X": X, "y": y, "last_w": last_w, "setw": setw}
 
     @staticmethod
@@ -250,7 +256,7 @@ class PGPBuffer:
 
 def buffer_init_helper(config, device, online=True, directory=None):
     input_config = config["input"]
-    train_config = config["train"]
+    train_config = config["training"]
     cdm, features = coin_data_manager_init_helper(
         config, online=online, download=True, directory=directory
     )

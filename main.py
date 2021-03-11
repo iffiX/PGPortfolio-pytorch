@@ -34,7 +34,8 @@ def build_parser():
     parser.add_argument("--format", dest="format", default="raw",
                         help="format of the table printed")
     parser.add_argument("--device", dest="device", default="cpu",
-                        help="device to be used to train")
+                        help="device to be used to train, use number 0 to "
+                             "indicate gpu device like cuda:0")
     parser.add_argument("--working_dir", dest="working_dir",
                         default=constants.ROOT_DIR,
                         help="Working directory, by default it is project root")

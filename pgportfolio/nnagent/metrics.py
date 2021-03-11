@@ -13,7 +13,7 @@ class Metrics:
         self._last_w = None
         self._net_output = None
 
-    def begin_evaluate(self, y, last_w, net_output=None):
+    def eval(self, y, last_w, net_output=None):
         self._y = y
         self._last_w = last_w
         self._net_output = net_output
@@ -23,7 +23,7 @@ class Metrics:
     def _future_price(self):
         # shape=[batch, coin+1]
         return t.cat([t.ones([self._y.shape[0], 1], device=self._y.device),
-                      self._y[:, 0, :]], dim=2)
+                      self._y[:, 0, :]], dim=1)
 
     @cache(depend_attr=["_y", "_net_output"])
     def _future_omega(self):
@@ -35,7 +35,7 @@ class Metrics:
     def _consumption_vector(self):
         # consumption vector (on each periods)
         # there is also a recursive solution, see paper
-        # shape=[batch-1, coin+1]
+        # shape=[batch-1]
         c = self._commission_ratio
         w_t = self._future_omega[:-1]  # rebalanced
         w_t1 = self._net_output[1:]
@@ -45,11 +45,10 @@ class Metrics:
     @cache(depend_attr=["_y", "_net_output"])
     def pv_vector(self):
         """Portfolio value vector."""
-        # shape=[batch, coin+1]
+        # shape=[batch]
         cv = self._consumption_vector
         return (t.sum(self._net_output * self._future_price, dim=1) *
-                (t.cat([t.ones([1, cv.shape[1]], device=cv.device), cv],
-                       dim=0)))
+                (t.cat([t.ones([1], device=cv.device), cv], dim=0)))
 
     @cache(depend_attr=["_y", "_net_output"])
     def pv_mean(self):

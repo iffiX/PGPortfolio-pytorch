@@ -27,27 +27,34 @@ class TraderTrainer(pl.LightningModule):
         self._input_config = config["input"]
 
         # major components
+        logging.info("Setting up buffer.")
+
+        # Note: self.device is "cpu" in init
         self._cdm, self._buffer = buffer_init_helper(
             config, self.device, online=online, directory=directory
         )
+        logging.info("Setting up network and metrics.")
         self._net = CNN(self._input_config["feature_number"],
                         self._input_config["coin_number"],
                         self._input_config["window_size"],
-                        config["layers"],
-                        device=self.device)
-        self._metrics = Metrics(self._config["trading"]["trading_consumption"],
-                                self._train_config["loss_function"])
-        self._test_set = self._buffer.get_test_set()
-        if not self._train_config["fast_train"]:
-            self._train_set = self._buffer.get_train_set()
+                        config["layers"])
 
-        logging.info("Maximum portfolio value upperbound of test set: {}"
-                     .format(t.prod(t.max(self._test_set[:, 0, :], dim=1)[0])))
+        logging.info("Setting up data.")
+
+        self._register_set(self._buffer.get_test_set(), "test")
+        if not self._train_config["fast_train"]:
+            self._register_set(self._buffer.get_train_set(), "train")
+
+        logging.info(
+            "Maximum portfolio value upperbound of test set: {}"
+            .format(
+                t.prod(t.max(self._test_set_y[:, 0, :], dim=1)[0])
+            ))
 
     @property
     def test_set(self):
         # Used by backtest
-        return self._test_sets
+        return self._test_set
 
     @property
     def coins(self):
@@ -61,23 +68,27 @@ class TraderTrainer(pl.LightningModule):
         return self._net(x, last_w)
 
     def train_dataloader(self):
-        return DataLoader(dataset=self._buffer.get_train_dataset())
+        return DataLoader(dataset=self._buffer.get_train_dataset(),
+                          collate_fn=lambda x: x)
 
     def training_step(self, batch, _batch_idx):
+        batch = batch[0]
         new_w = self._net(batch["X"], batch["last_w"])
         batch["setw"](new_w[:, 1:])
-        self._metrics.begin_evaluate(batch["y"], batch["last_w"], new_w)
-        return self._metrics.loss
+        return self._init_metrics()\
+            .eval(batch["y"], batch["last_w"], new_w).loss
 
-    def training_step_end(self):
+    def training_step_end(self, training_output):
         # Manually test after each training step.
+        # Note: _test_set_X, _test_set_y, etc. are registered buffers.
         fast_train = self._train_config["fast_train"]
 
         self._net.eval()
-        new_w = self._net(self._test_set["X"], self._test_set["last_w"])
-        self._test_set["setw"](new_w)
-        m = self._metrics.begin_evaluate(self._test_set["y"],
-                                         self._test_set["last_w"])
+        new_w = self._net(self._test_set_X, self._test_set_last_w)
+        self._test_set_setw(new_w[:, 1:])
+        m = self._init_metrics().eval(self._test_set_y,
+                                      self._test_set_last_w,
+                                      new_w)
 
         if m.portfolio_value == 1.0:
             logging.info("Average portfolio weights {}"
@@ -91,14 +102,14 @@ class TraderTrainer(pl.LightningModule):
         }, prog_bar=True)
 
         if not fast_train:
-            new_w = self._net(self._train_set["X"],
-                              self._train_set["last_w"])
-            self._train_set["setw"](new_w)
-            m = self._metrics.begin_evaluate(self._test_set["y"],
-                                             self._test_set["last_w"])
+            new_w = self._net(self._train_set_X,
+                              self._train_set_last_w)
+            self._train_set_setw(new_w[:, 1:])
+            m = m.evaluate(self._train_set_y, self._train_set_last_w, new_w)
             self.log("train_loss", m.loss, prog_bar=True)
 
         self._net.train()
+        return training_output
 
     def configure_optimizers(self):
         learning_rate = self._config["training"]["learning_rate"]
@@ -124,3 +135,15 @@ class TraderTrainer(pl.LightningModule):
 
         lr_sch = t.optim.lr_scheduler.ExponentialLR(optim, gamma=decay_rate)
         return {"optimizer": optim, "lr_scheduler": lr_sch}
+
+    def _register_set(self, set, name):
+        for k, v in set.items():
+            key = "_{}_set_{}".format(name, k)
+            if t.is_tensor(v):
+                self.register_buffer(key, v)
+            else:
+                setattr(self, key, v)
+
+    def _init_metrics(self):
+        return Metrics(self._config["trading"]["trading_consumption"],
+                       self._train_config["loss_function"])

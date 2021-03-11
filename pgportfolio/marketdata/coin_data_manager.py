@@ -133,12 +133,13 @@ class CoinDataManager:
                                                     parse_dates=["date_norm"],
                                                     index_col="date_norm")
                     df.loc[(coin, serial_data.index.astype(np.int64) // 10**9),
-                           feature] = serial_data.squeeze()
-                    df = df.fillna(method="bfill", axis=1)
+                           feature] = serial_data.values
         finally:
             connection.commit()
             connection.close()
-        return df.values
+        df = df.fillna(method="bfill", axis=1)
+        return df.values.reshape(len(coins), len(time_index), len(features)) \
+                 .transpose(2, 0, 1)
 
     def select_coins(self, start, end):
         """

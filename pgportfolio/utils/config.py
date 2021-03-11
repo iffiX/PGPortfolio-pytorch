@@ -28,13 +28,13 @@ def fill_layers_default(layers):
         if layer["type"] == "ConvLayer":
             set_missing(layer, "padding", "valid")
             set_missing(layer, "strides", [1, 1])
-            set_missing(layer, "activation_function", "relu")
+            set_missing(layer, "activation_function", "ReLU")
             set_missing(layer, "weight_decay", 0.0)
         elif layer["type"] == "EIIE_Dense":
-            set_missing(layer, "activation_function", "relu")
+            set_missing(layer, "activation_function", "ReLU")
             set_missing(layer, "weight_decay", 0.0)
         elif layer["type"] == "DenseLayer":
-            set_missing(layer, "activation_function", "relu")
+            set_missing(layer, "activation_function", "ReLU")
             set_missing(layer, "weight_decay", 0.0)
         elif layer["type"] == "EIIE_LSTM" or layer["type"] == "EIIE_RNN":
             set_missing(layer, "dropouts", None)
@@ -60,8 +60,9 @@ def load_config(path):
     fill_default(config)
     return config
 
+
 def save_config(config, path):
-    with open(path) as file:
+    with open(path, "w") as file:
         json.dump(config, file, sort_keys=True, indent=4)
 
 
