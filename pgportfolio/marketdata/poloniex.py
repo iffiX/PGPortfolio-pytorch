@@ -1,6 +1,11 @@
+import ssl
+import socks
 import time
 import json
-from urllib.request import Request, urlopen
+import logging
+from pgportfolio import constants
+from sockshandler import SocksiPyHandler
+from urllib.request import Request, build_opener
 from urllib.parse import urlencode
 
 minute = 60
@@ -70,11 +75,21 @@ class Poloniex:
 
             returns {"error":"<error message>"} if API error.
         """
+        logging.info("Poloniex command: {}, args: {}".format(command, args))
         args = args or {}
         if command in PUBLIC_COMMANDS:
             url = 'https://poloniex.com/public?'
             args['command'] = command
-            ret = urlopen(Request(url + urlencode(args)))
+            # prevent urllib from complaining when using a proxy
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            opener = build_opener(
+                SocksiPyHandler(socks.PROXY_TYPE_SOCKS5,
+                                constants.PROXY_ADDR,
+                                constants.PROXY_PORT,
+                                True, context=context))
+            ret = opener.open(Request(url + urlencode(args)))
             return json.loads(ret.read().decode(encoding='UTF-8'))
         else:
             return False

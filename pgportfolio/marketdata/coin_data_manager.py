@@ -15,7 +15,6 @@ class CoinDataManager:
     # each tuple is a row.
     def __init__(self, coin_number, end, volume_average_days=1,
                  volume_forward=0, online=True, directory=None):
-        self._initialize_db()
         self._storage_period = FIVE_MINUTES  # keep this as 300
         self._coin_number = coin_number
         self._online = online
@@ -24,7 +23,8 @@ class CoinDataManager:
         self._volume_forward = volume_forward
         self._volume_average_days = volume_average_days
         self._coins = None
-        self._db_dir = directory or DATABASE_DIR
+        self._db_dir = (directory or DATABASE_DIR) + "/data"
+        self._initialize_db()
 
     @property
     def coins(self):
@@ -59,13 +59,12 @@ class CoinDataManager:
         logging.info("Feature type list is %s" % str(features))
         self._check_period(period)
 
-        time_index = pd.to_datetime(list(range(start, end + 1, period)),
-                                    unit='s')
+        time_index = list(range(start, end + 1, period))
         df = pd.DataFrame(
-            index=pd.MultiIndex.from_product(
+            index=pd.MultiIndex.from_product((
                 coins,  # major
-                time_index,  # minor
-            ),
+                time_index  # minor
+            )),
             columns=features,
             dtype=np.float32
         )
@@ -133,8 +132,8 @@ class CoinDataManager:
                     serial_data = pd.read_sql_query(sql, con=connection,
                                                     parse_dates=["date_norm"],
                                                     index_col="date_norm")
-                    df.loc[(coin, serial_data.index), feature] = \
-                        serial_data.squeeze()
+                    df.loc[(coin, serial_data.index.astype(np.int64) // 10**9),
+                           feature] = serial_data.squeeze()
                     df = df.fillna(method="bfill", axis=1)
         finally:
             connection.commit()
@@ -294,7 +293,8 @@ class CoinDataManager:
                          weightedAverage))
 
 
-def coin_data_manager_init_helper(config, download=False, directory=None):
+def coin_data_manager_init_helper(config, online=True,
+                                  download=False, directory=None):
     input_config = config["input"]
     start = parse_time(input_config["start_date"])
     end = parse_time(input_config["end_date"])
@@ -308,6 +308,7 @@ def coin_data_manager_init_helper(config, download=False, directory=None):
              input_config["test_portion"]),
             input_config["portion_reversed"]
         ),
+        online=online,
         directory=directory
     )
     if not download:

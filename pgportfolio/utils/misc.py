@@ -1,5 +1,5 @@
 import time
-import datetime
+from datetime import datetime
 
 
 def get_feature_list(feature_number):
@@ -31,4 +31,3 @@ def get_volume_forward(time_span, portion, portion_reversed):
 
 def parse_time(time_string):
     return time.mktime(datetime.strptime(time_string, "%Y/%m/%d").timetuple())
-

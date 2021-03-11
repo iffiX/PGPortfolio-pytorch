@@ -9,7 +9,7 @@ from pgportfolio.nnagent.replay_buffer import buffer_init_helper
 
 
 class TraderTrainer(pl.LightningModule):
-    def __init__(self, config, directory=None):
+    def __init__(self, config, online=True, directory=None):
         """
         Args:
             config: config dictionary.
@@ -28,7 +28,7 @@ class TraderTrainer(pl.LightningModule):
 
         # major components
         self._cdm, self._buffer = buffer_init_helper(
-            config, self.device, directory
+            config, self.device, online=online, directory=directory
         )
         self._net = CNN(self._input_config["feature_number"],
                         self._input_config["coin_number"],

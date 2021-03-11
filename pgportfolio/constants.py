@@ -10,6 +10,10 @@ CONFIG_FILE = str(ROOT_DIR.joinpath("config.json"))
 
 LAMBDA = 1e-4  # lambda in loss function 5 in training
 
+PROXY_ADDR = ""
+
+PROXY_PORT = None
+
 # About time
 NOW = 0
 FIVE_MINUTES = 60 * 5

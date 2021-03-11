@@ -18,7 +18,9 @@ ALGOS = {"crp": crp.CRP, "ons": ons.ONS, "olmar": olmar.OLMAR, "up": up.UP,
 
 
 class BackTest:
-    def __init__(self, config, initial_BTC=1.0, agent_algorithm="nn"):
+    def __init__(self, config,
+                 initial_BTC=1.0, agent_algorithm="nn",
+                 online=True, directory=None):
         """
         Args:
             config: Config dictionary.
@@ -30,14 +32,18 @@ class BackTest:
         self._agent_alg = agent_algorithm
 
         if agent_algorithm == "nn":
-            self._rolling_trainer = RollingTrainer(config)
+            self._rolling_trainer = RollingTrainer(
+                config, online=online, directory=directory
+            )
             self._coin_name_list = self._rolling_trainer.coin_list
             self._agent = self._rolling_trainer
             test_set = self._rolling_trainer.coins
         elif agent_algorithm in ALGOS or agent_algorithm == "not_used":
             config = config.copy()
             config["input"]["feature_number"] = 1
-            cdm, buffer = buffer_init_helper(config, "cpu")
+            cdm, buffer = buffer_init_helper(
+                config, "cpu", online=online, directory=directory
+            )
             test_set = buffer.get_test_set()
             self._coin_name_list = cdm.coins
             if agent_algorithm != "not_used":

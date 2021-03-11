@@ -9,7 +9,9 @@ class CoinList(object):
     def __init__(self, end, volume_average_days=1, volume_forward=0):
         self._polo = Poloniex()
         # connect the internet to access volumes
+        logging.info("Checking market values.")
         vol = self._polo.market_volume()
+        logging.info("Checking tickers.")
         ticker = self._polo.market_ticker()
         pairs = []
         coins = []

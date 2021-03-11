@@ -45,7 +45,8 @@ NAMES = {"best": "Best Stock (Benchmark)",
          "wmamr": "WMAMR"}
 
 
-def plot_backtest(config, algos, labels=None):
+def plot_backtest(config, algos, labels=None,
+                  online=True, directory=None):
     """
     Args:
         config: config dictionary.
@@ -54,7 +55,8 @@ def plot_backtest(config, algos, labels=None):
     """
     results = []
     for i, algo in enumerate(algos):
-        b = BackTest(config, agent_algorithm=algo)
+        b = BackTest(config, agent_algorithm=algo,
+                     online=online, directory=directory)
         b.trade()
         results.append(np.cumprod(b.test_pc_vector))
 
@@ -107,7 +109,8 @@ def plot_backtest(config, algos, labels=None):
 
 
 def table_backtest(config, algos, labels=None, format="raw",
-                   indicators=list(INDICATORS.keys())):
+                   indicators=list(INDICATORS.keys()),
+                   online=True, directory=None):
     """
     Args:
         config: config dictionary.
@@ -122,7 +125,8 @@ def table_backtest(config, algos, labels=None, format="raw",
     results = []
     labels = list(labels)
     for i, algo in enumerate(algos):
-        b = BackTest(config, agent_algorithm=algo)
+        b = BackTest(config, agent_algorithm=algo,
+                     online=online, directory=directory)
         b.trade()
         portfolio_changes = b.test_pc_vector
 

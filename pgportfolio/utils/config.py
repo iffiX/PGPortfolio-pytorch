@@ -57,8 +57,8 @@ def set_missing(config, name, value):
 def load_config(path):
     with open(path) as file:
         config = json.load(file)
-    return fill_default(config)
-
+    fill_default(config)
+    return config
 
 def save_config(config, path):
     with open(path) as file:

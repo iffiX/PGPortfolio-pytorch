@@ -248,11 +248,11 @@ class PGPBuffer:
         return train_idx, test_idx, val_idx
 
 
-def buffer_init_helper(config, device, directory=None):
+def buffer_init_helper(config, device, online=True, directory=None):
     input_config = config["input"]
     train_config = config["train"]
     cdm, features = coin_data_manager_init_helper(
-        config, download=True, directory=directory
+        config, online=online, download=True, directory=directory
     )
     buffer = PGPBuffer(
         features,
