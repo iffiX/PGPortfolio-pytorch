@@ -2,6 +2,10 @@
 
 ### Introduction
 
+Link to project [Video](https://www.youtube.com/watch?v=TuBabSVXCZI&ab_channel=Iffi)
+
+Link to project [Slides](https://docs.google.com/presentation/d/1WagL1_1kufbpzJYGrKOdwAA4oAjFO3FmcLfOpastRAQ/edit?usp=sharing)
+
 ### Overview
 
 1. How to use the framework.
