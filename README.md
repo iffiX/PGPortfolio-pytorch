@@ -2,6 +2,10 @@
 
 ### Introduction
 
+Link to project [Video](https://www.youtube.com/watch?v=TuBabSVXCZI&ab_channel=Iffi)
+
+Link to project [Slides](https://docs.google.com/presentation/d/1WagL1_1kufbpzJYGrKOdwAA4oAjFO3FmcLfOpastRAQ/edit?usp=sharing)
+
 ### Overview
 
 1. How to use the framework.
@@ -16,6 +20,11 @@
 ### Usage
 
 ### Poloniex Dataset
+Poloniex(founded in 2013) is a cryptocurrency exchange that allows for the buying or selling of digital assets, such as Bitcoin (BTC), Ethereum (ETH), TRON (TRX), and other altcoins.
+
+Poloniex is no longer available for US users, margin trading was stopped in october 2018 with regards to US laws.
+
+Steps to access and interact with the poloniex exchange are [here](https://docs.poloniex.com/#introduction).
 
 ### Method of the framework
 
