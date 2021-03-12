@@ -19,6 +19,109 @@ Link to project [Slides](https://docs.google.com/presentation/d/1WagL1_1kufbpzJY
 
 ### Usage
 
+#### Command line
+
+Currently our implementation doesn't support parallel training, so you will have to manually train with each config file:
+
+First download data to local cache, we have added support for socks5 proxy, so you can use it if your network condition to Poloniex is not good.
+
+```
+python main.py --mode download_data --working_dir test --proxy localhost:1082
+```
+
+Then train an nnagent, use 0,1,...,n to select your cuda device if you have gpu, default is running on cpu, `--offline` means using data just downloaded:
+
+```
+python main.py --mode train --working_dir test --device=0 --offline
+```
+
+After finish training you can do the following things:
+
+In order to see detailed backtesting steps for each algorithm:
+
+```
+python main.py  --mode backtest --working_dir test --offline --algos nn,rmr
+```
+
+And output contains:
+
+```
+INFO:root:
+                =============================================================
+                Step 1:
+                Raw weights:       1.34e-04:BTC,3.33e-03:ETH,1.31e-01:XMR,1.04e-02:reversed_USDT,2.16e-02:DASH,2.45e-02:LTC,1.72e-02:ETC,5.24e-02:XRP,1.96e-03:ZEC,6.20e-01:DCR,1.92e-02:XEM,9.76e-02:STR
+                Total assets:      1.003 BTC
+                Portfolio change:  1.00309
+                
+INFO:root:
+                =============================================================
+                Step 2:
+                Raw weights:       1.38e-04:BTC,5.85e-03:ETH,1.52e-01:XMR,1.41e-02:reversed_USDT,1.94e-02:DASH,2.87e-02:LTC,2.40e-02:ETC,6.96e-02:XRP,1.72e-03:ZEC,6.13e-01:DCR,8.11e-03:XEM,6.29e-02:STR
+                Total assets:      1.007 BTC
+                Portfolio change:  1.00354
+...
+```
+
+
+
+To get the backtest curve figure using selected algorithms:
+
+```
+python main.py  --mode plot --working_dir test --offline --algos nn,best,crp,rmr,ons
+```
+
+To get a complete summary table:
+
+```
+python main.py --mode table --working_dir test --offline --algos nn,best,crp,ubah,anticor,olmar,pamr,wmamr,cwmr,rmr,ons,up,eg,m0 --format=csv
+```
+
+
+
+#### Configuration File
+Under the `nntrader/nntrader` directory, there is a json file called `net_config.json`,
+ holding all the configuration of the agent and could be modified outside the program code.
+##### Network Topology
+* `"layers"`
+    * layers list of the CNN, including the output layer
+    * `"type"`
+        * domain is `{"ConvLayer", "FullyLayer", "DropOut", "MaxPooling",
+        "AveragePooling", "LocalResponseNormalization", "SingleMachineOutput",
+        "LSTMSingleMachine", "RNNSingleMachine"}`
+    * `"filter shape"`
+        * shape of the filter (kernal) of the Convolution Layer
+* `"input"`
+    * `"window_size"`
+        * number of columns of the input matrix
+    * `"coin_number"`
+        * number of rows of the input matrix
+    * `"feature_number"`
+        * number of features (just like RGB in computer vision)
+        * domain is {1, 2, 3}
+        * 1 means the feature is ["close"], last price of each period
+        * 2 means the feature is ["close", "volume"]
+        * 3 means the features are ["close", "high", "low"]
+
+##### Market Data
+* `"input "`
+    * `"start_date"`
+        * start date of the global data matrix
+        * format is yyyy/MM/dd
+    * `"end_date"`
+        * start date of the global data matrix
+        * format is yyyy/MM/dd
+        * The performance could varied a lot in different time ranges.
+    * `"volume_average_days"`
+        * number of days of volume used to select the coins
+    * `"test_portion"`
+        * portion of backtest data, ranging from 0 to 1. The left is training data.
+    * `"global_period"`
+        * trading period and period of prices in input window.
+        * should be a multiple of 300 (seconds)
+    * `"coin_number"`
+        * number of assets to be traded.
+        * does not include cash (i.e. btc)
+
 ### Poloniex Dataset
 Poloniex(founded in 2013) is a cryptocurrency exchange that allows for the buying or selling of digital assets, such as Bitcoin (BTC), Ethereum (ETH), TRON (TRX), and other altcoins.
 
@@ -27,6 +130,8 @@ Poloniex is no longer available for US users, margin trading was stopped in octo
 Steps to access and interact with the poloniex exchange are [here](https://docs.poloniex.com/#introduction).
 
 ### Method of the framework
+
+
 
 ### Code implementation
 
@@ -258,3 +363,15 @@ Finally we just need to pass this `LightningModule` to the trainer, and complete
 
 
 ### Future improvements
+
+There are several important future improvements worth noting:
+
+- Add hyperparameter auto-tuning.
+- Support more data sources except cryptocurrencies listed on Poloniex.
+- Add online rolling training function.
+
+The first improvement is adding hyperparameter auto tuning functions, the original implementation of the paper uses complex hand-written parallel training based on tensorflow, with no heuristics on optimizing hyperparameters. We can use pytorch lightning to implements large-scale parallel training and connect with hyperparameter tuning libraries like  the [NNI](https://github.com/microsoft/nni).
+
+The second improvement is adding more data sources except from Poloniex, as we have introduced in the dataflow part, as long as the data interface is compatible with `get_coin_features` they can be used in the framework.
+
+The third improvement is adding rolling training function, our implementation has implemented the `RollingTrainer` class, but haven't finished the part in `main.py` to connect to Poloniex and learning on the live stream, we can also add functions to allow agents learn from expert experience, this is also an important extension to adapt our code to real trading environments. 
