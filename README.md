@@ -19,7 +19,7 @@ Poloniex(founded in 2013) is a cryptocurrency exchange that allows for the buyin
 
 Poloniex is no longer available for US users, margin trading was stopped in october 2018 with regards to US laws.
 
-Steps to access and interact with the poloniex exchange are here(https://docs.poloniex.com/#introduction).
+Steps to access and interact with the poloniex exchange are here[https://docs.poloniex.com/#introduction].
 
 ### Method of the framework
 
