@@ -1,3 +1,5 @@
+import os
+import re
 import logging
 import numpy as np
 from pgportfolio.nnagent.rollingtrainer import RollingTrainer
@@ -17,10 +19,17 @@ ALGOS = {"crp": crp.CRP, "ons": ons.ONS, "olmar": olmar.OLMAR, "up": up.UP,
          "wmamr": wmamr.WMAMR}
 
 
+traditional_data_cache = None
+
+
 class BackTest:
     def __init__(self, config,
-                 initial_BTC=1.0, agent_algorithm="nn",
-                 online=True, directory=None):
+                 initial_BTC=1.0,
+                 agent_algorithm="nn",
+                 online=True,
+                 verbose=False,
+                 model_directory=None,
+                 db_directory=None):
         """
         Args:
             config: Config dictionary.
@@ -28,12 +37,20 @@ class BackTest:
             agent_algorithm: "nn" for nnagent, or anything in tdagent,
             or "not_used" for pure data extraction with no agent.
         """
+        global traditional_data_cache
         self._steps = 0
         self._agent_alg = agent_algorithm
+        self._verbose = verbose
+        logging.info("Creating test agent {}".format(agent_algorithm))
 
         if agent_algorithm == "nn":
-            self._rolling_trainer = RollingTrainer(
-                config, online=online, directory=directory
+            ckpt = self._find_latest_checkpoint(model_directory)
+            logging.info("Loading checkpoint {} for nn agent".format(ckpt))
+            self._rolling_trainer = RollingTrainer.load_from_checkpoint(
+                model_directory + "/" + ckpt, map_location="cpu",
+                config=config,
+                online=online,
+                db_directory=db_directory
             )
             self._coin_name_list = self._rolling_trainer.coins
             self._agent = self._rolling_trainer
@@ -41,11 +58,17 @@ class BackTest:
         elif agent_algorithm in ALGOS or agent_algorithm == "not_used":
             config = config.copy()
             config["input"]["feature_number"] = 1
-            cdm, buffer = buffer_init_helper(
-                config, "cpu", online=online, directory=directory
-            )
-            test_set = buffer.get_test_set()
-            self._coin_name_list = cdm.coins
+            if traditional_data_cache is None:
+                cdm, buffer = buffer_init_helper(
+                    config, "cpu", online=online, db_directory=db_directory
+                )
+                test_set = buffer.get_test_set()
+                traditional_data_cache = {"test_set": test_set,
+                                          "coin_name_list": cdm.coins}
+                self._coin_name_list = cdm.coins
+            else:
+                self._test_set = traditional_data_cache["test_set"]
+                self._coin_name_list = traditional_data_cache["coin_name_list"]
             if agent_algorithm != "not_used":
                 self._agent = ALGOS[agent_algorithm]()
         else:
@@ -66,7 +89,6 @@ class BackTest:
 
         self._last_weight = np.zeros((self._coin_number+1,))
         self._last_weight[0] = 1.0
-        logging.info("Algorithm: {}".format(agent_algorithm))
 
     @property
     def agent(self):
@@ -95,6 +117,7 @@ class BackTest:
         """
         Trading simulation.
         """
+        logging.info("Running algorithm: {}".format(self._agent_alg))
         while self._steps < self._test_set_length:
             weight = self._agent.decide_by_history(self._generate_history(),
                                                    self._last_weight.copy(),
@@ -107,19 +130,23 @@ class BackTest:
             self._last_weight = last_weight
             self._test_pc_vector.append(portfolio_change)
 
-            logging.info("""
-            =============================================================
-            Step 1:
-            Raw weights:       {}
-            Total assets:      {:.3f} BTC
-            Portfolio change:  {}
-            """.format(
-                ",".join(
-                    ["{}:{}".format(w, c)
-                     for w, c in zip(weight[0], ["BTC"] + self._coin_name_list)]
-                ),
-                total_capital, portfolio_change
-            ))
+            if self._verbose:
+                logging.info("""
+                =============================================================
+                Step {}:
+                Raw weights:       {}
+                Total assets:      {:.3f} BTC
+                Portfolio change:  {:.5f}
+                """.format(
+                    self._steps + 1,
+                    ",".join(
+                        ["{:.2e}:{}".format(w, c)
+                         for w, c in zip(weight,
+                                         ["BTC"] + self._coin_name_list)]
+                    ),
+                    total_capital, portfolio_change
+                ))
+            self._steps += 1
         self._test_pv = self._total_capital
 
     def _generate_history(self):
@@ -135,6 +162,7 @@ class BackTest:
         test_set = self._test_set_y[:, 0, :].T
         test_set = np.concatenate((np.ones((1, test_set.shape[1])), test_set),
                                   axis=0)
+        return test_set
 
     def _trade_by_strategy(self, weight):
         future_price = np.concatenate([np.ones(1),
@@ -170,3 +198,20 @@ class BackTest:
                 np.sum(np.maximum(w0[1:] - mu1*w1[1:], 0))) / \
                 (1 - commission_rate * w1[0])
         return mu1
+
+    @staticmethod
+    def _find_latest_checkpoint(model_dir):
+        if not os.path.exists(model_dir) or not os.path.isdir(model_dir):
+            raise RuntimeError("Model directory doesn't exist!")
+        models = os.listdir(model_dir)
+        latest_version = -1
+        latest_checkpoint = None
+        for m in models:
+            match = re.fullmatch("epoch=([0-9]+).*$", m)
+            if match is not None:
+                if int(match.group(1)) > latest_version:
+                    latest_checkpoint = m
+        if latest_checkpoint is None:
+            raise RuntimeError("Checkpoint not found in target directory: {}"
+                               .format(model_dir))
+        return latest_checkpoint

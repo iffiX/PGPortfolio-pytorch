@@ -19,7 +19,6 @@ def fill_input_default(input_config):
     set_missing(input_config, "portion_reversed", False)
     set_missing(input_config, "market", "poloniex")
     set_missing(input_config, "norm_method", "absolute")
-    set_missing(input_config, "is_unordered", False)
     set_missing(input_config, "fake_ratio", 1)
 
 

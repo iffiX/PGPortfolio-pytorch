@@ -1,4 +1,5 @@
 import datetime
+import logging
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,7 +47,10 @@ NAMES = {"best": "Best Stock (Benchmark)",
 
 
 def plot_backtest(config, algos, labels=None,
-                  online=True, directory=None):
+                  online=True,
+                  working_directory="",
+                  model_directory=None,
+                  db_directory=None):
     """
     Args:
         config: config dictionary.
@@ -55,8 +59,11 @@ def plot_backtest(config, algos, labels=None,
     """
     results = []
     for i, algo in enumerate(algos):
-        b = BackTest(config, agent_algorithm=algo,
-                     online=online, directory=directory)
+        b = BackTest(config,
+                     agent_algorithm=algo,
+                     online=online,
+                     model_directory=model_directory,
+                     db_directory=db_directory)
         b.trade()
         results.append(np.cumprod(b.test_pc_vector))
 
@@ -103,14 +110,24 @@ def plot_backtest(config, algos, labels=None,
     plt.tight_layout()
     ax.legend(loc="upper left", prop={"size": 10})
     fig.autofmt_xdate()
-    plt.savefig("result.eps", bbox_inches='tight',
-                pad_inches=0)
+
+    file_path = working_directory + "/backtest_start_{}_end_{}.eps".format(
+        dates[0].strftime("%Y-%m-%d"),
+        dates[-1].strftime("%Y-%m-%d")
+    )
+    logging.info("Backtest saved to " + file_path)
+    logging.info("Backtest time is from " +
+                 str(dates[0]) + " to " + str(dates[-1]))
+    plt.savefig(file_path, bbox_inches='tight', pad_inches=0)
     plt.show()
 
 
 def table_backtest(config, algos, labels=None, format="raw",
                    indicators=list(INDICATORS.keys()),
-                   online=True, directory=None):
+                   online=True,
+                   working_directory="",
+                   model_directory=None,
+                   db_directory=None):
     """
     Args:
         config: config dictionary.
@@ -126,7 +143,9 @@ def table_backtest(config, algos, labels=None, format="raw",
     labels = list(labels)
     for i, algo in enumerate(algos):
         b = BackTest(config, agent_algorithm=algo,
-                     online=online, directory=directory)
+                     online=online,
+                     model_directory=model_directory,
+                     db_directory=db_directory)
         b.trade()
         portfolio_changes = b.test_pc_vector
 
@@ -148,15 +167,24 @@ def table_backtest(config, algos, labels=None, format="raw",
         end - end % config["input"]["global_period"]
     )
 
-    print("backtest start from " + str(start) + " to " + str(end))
+    file_path = working_directory + "/backtest_start_{}_end_{}.{}".format(
+        start.strftime("%Y-%m-%d"),
+        end.strftime("%Y-%m-%d"),
+        format
+    )
+    logging.info("Backtest saved to " + file_path)
+    logging.info("Backtest time is from " + str(start) + " to " + str(end))
     if format == "html":
-        print(dataframe.to_html())
+        with open(file_path, "w") as f:
+            f.write(dataframe.to_html())
     elif format == "latex":
-        print(dataframe.to_latex())
+        with open(file_path, "w") as f:
+            f.write(dataframe.to_latex())
     elif format == "raw":
-        print(dataframe.to_string())
+        with open(file_path, "w") as f:
+            f.write(dataframe.to_latex())
     elif format == "csv":
-        dataframe.to_csv("./compare" + end.strftime("%Y-%m-%d") + ".csv")
+        dataframe.to_csv(file_path)
     else:
         raise ValueError("The format " + format + " is not supported")
 

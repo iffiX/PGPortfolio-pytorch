@@ -9,11 +9,11 @@ from pgportfolio.nnagent.replay_buffer import buffer_init_helper
 
 
 class TraderTrainer(pl.LightningModule):
-    def __init__(self, config, online=True, directory=None):
+    def __init__(self, config, online=True, db_directory=None):
         """
         Args:
             config: config dictionary.
-            directory: root of the database working directory.
+            db_directory: root of the database working directory.
         """
         super(TraderTrainer, self).__init__()
 
@@ -31,7 +31,7 @@ class TraderTrainer(pl.LightningModule):
 
         # Note: self.device is "cpu" in init
         self._cdm, self._buffer = buffer_init_helper(
-            config, self.device, online=online, directory=directory
+            config, self.device, online=online, db_directory=db_directory
         )
         logging.info("Setting up network and metrics.")
         self._net = CNN(self._input_config["feature_number"],
@@ -54,15 +54,24 @@ class TraderTrainer(pl.LightningModule):
     @property
     def test_set(self):
         # Used by backtest
-        return self._test_set
+        return {
+            "X": self._test_set_X,
+            "y": self._test_set_y,
+            "last_w": self._test_set_last_w,
+            "setw": self._test_set_setw
+        }
 
     @property
     def coins(self):
         # Used by backtest.
         return self._cdm.coins
 
-    def decide_by_history(self, x, last_w):
-        return self._net(x, last_w)
+    def decide_by_history(self, x, last_w_with_cash, **kwargs):
+        # expects network on cpu
+        with t.no_grad():
+            return self._net(t.tensor(x, dtype=t.float32).unsqueeze(0),
+                             t.tensor(last_w_with_cash[1:], dtype=t.float32)
+                             .unsqueeze(0)).squeeze(0).numpy()
 
     def forward(self, x, last_w):
         return self._net(x, last_w)
@@ -91,14 +100,16 @@ class TraderTrainer(pl.LightningModule):
                                       new_w)
 
         if m.portfolio_value == 1.0:
-            logging.info("Average portfolio weights {}"
-                         .format(m.portfolio_weights.mean(axis=0)))
+            logging.error("Portfolio value is the same as start, "
+                          "check input data, "
+                          "average portfolio weights {}"
+                          .format(m.pv_vector))
 
         self.log_dict({
             "test_portfolio_value": m.portfolio_value,
-            "test_log_mean": m.log_mean,
+            "test_log_mean": m.pv_log_mean,
             "test_loss": m.loss,
-            "test_log_mean_free": m.log_mean_free,
+            "test_log_mean_free": m.pv_log_mean_no_commission,
         }, prog_bar=True)
 
         if not fast_train:

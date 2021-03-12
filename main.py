@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pytorch_lightning as pl
 from argparse import ArgumentParser
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from pgportfolio import constants
 from pgportfolio.marketdata.coin_data_manager import \
@@ -80,10 +80,13 @@ def main():
         save_config(config, options.working_dir + "/config.json")
         checkpoint_callback = ModelCheckpoint(
             dirpath=options.working_dir + "/model",
-            filename="{epoch:02d}-{val_loss:.2f}.ckpt",
+            filename="{epoch:02d}-{test_portfolio_value:.2f}",
             save_top_k=10,
             monitor="test_portfolio_value", mode="max",
             period=1, verbose=True
+        )
+        early_stopping = EarlyStopping(
+            monitor="test_portfolio_value", mode="max"
         )
         t_logger = TensorBoardLogger(
             options.working_dir + "/log/tensorboard_log"
@@ -91,14 +94,14 @@ def main():
         trainer = pl.Trainer(
             weights_save_path=options.working_dir + "/log",
             gpus=0 if options.device == "cpu" else options.device,
-            callbacks=[checkpoint_callback],
+            callbacks=[checkpoint_callback, early_stopping],
             logger=[t_logger],
-            limit_train_batches=100,
+            limit_train_batches=1000,
             max_steps=config["training"]["steps"]
         )
         model = TraderTrainer(config,
                               online=not options.offline,
-                              directory=options.working_dir + "/database")
+                              db_directory=options.working_dir + "/database")
         trainer.fit(model)
 
     elif options.mode == "download_data":
@@ -106,15 +109,20 @@ def main():
         coin_data_manager_init_helper(
             config, download=True,
             online=not options.offline,
-            directory=options.working_dir + "/database"
+            db_directory=options.working_dir + "/database"
         )
     elif options.mode == "backtest":
+        if options.algos is None:
+            raise ValueError("Algorithms not set.")
         config = load_config(options.config)
         save_config(config, options.working_dir + "/config.json")
         algos = options.algos.split(",")
-        backtests = [BackTest(config, agent_algorithm=algo,
+        backtests = [BackTest(config,
+                              agent_algorithm=algo,
                               online=not options.offline,
-                              directory=options.working_dir + "/database")
+                              verbose=True,
+                              model_directory=options.working_dir + "/model",
+                              db_directory=options.working_dir + "/database")
                      for algo in algos]
         for b in backtests:
             b.trade()
@@ -123,10 +131,13 @@ def main():
         config = load_config(options.config)
         backtest = BackTest(config, agent_algorithm="not_used",
                             online=not options.offline,
-                            directory=options.working_dir + "/database")
-        with open(options.working_dir + "test_data.csv", 'wb') as f:
+                            model_directory=options.working_dir + "/model",
+                            db_directory=options.working_dir + "/database")
+        with open(options.working_dir + "/test_data.csv", 'wb') as f:
             np.savetxt(f, backtest.test_data.T, delimiter=",")
     elif options.mode == "plot":
+        if options.algos is None:
+            raise ValueError("Algorithms not set.")
         config = load_config(options.config)
         algos = options.algos.split(",")
         if options.labels:
@@ -136,8 +147,12 @@ def main():
             labels = algos
         plot.plot_backtest(config, algos, labels,
                            online=not options.offline,
-                           directory=options.working_dir + "/database")
+                           working_directory=options.working_dir,
+                           model_directory=options.working_dir + "/model",
+                           db_directory=options.working_dir + "/database")
     elif options.mode == "table":
+        if options.algos is None:
+            raise ValueError("Algorithms not set.")
         config = load_config(options.config)
         algos = options.algos.split(",")
         if options.labels:
@@ -148,7 +163,9 @@ def main():
         plot.table_backtest(config, algos, labels,
                             format=options.format,
                             online=not options.offline,
-                            directory=options.working_dir + "/database")
+                            working_directory=options.working_dir,
+                            model_directory=options.working_dir + "/model",
+                            db_directory=options.working_dir + "/database")
 
 
 if __name__ == "__main__":

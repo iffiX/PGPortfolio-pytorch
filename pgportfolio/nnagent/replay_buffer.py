@@ -34,7 +34,6 @@ class PGPBuffer(nn.Module):
                  validation_portion=0.1,
                  sample_bias=0.1,
                  portion_reversed=False,
-                 is_unordered=False,
                  device="cpu"):
         """
         Args:
@@ -43,7 +42,6 @@ class PGPBuffer(nn.Module):
             test_portion: Portion of testing set, training portion is
                 `1 - test_portion-validation_portion`.
             validation_portion: Portion of validation set.
-            is_unordered: If False, the sample inside a mini-batch is in order.
             portion_reversed: If False, the order of sets is (train, test)
                               else the order is (test, train).
             device: Pytorch device to store information on.
@@ -64,8 +62,6 @@ class PGPBuffer(nn.Module):
         self._window_size = window_size
         self._sample_bias = sample_bias
         self._portion_reversed = portion_reversed
-        self._is_unordered = is_unordered
-
         self._train_idx, self._test_idx, self._val_idx = \
             self._divide_data(period_num, window_size, test_portion,
                               validation_portion, portion_reversed)
@@ -146,7 +142,7 @@ class PGPBuffer(nn.Module):
     def next_batch(self, source="train"):
         """
         Returns:
-             The next batch of training sample.
+             The next batch of training sample, the batch is contiguous in time.
              The sample is a dictionary with keys:
               "X": input data [batch, feature, coin, time];
               "y": future relative price [batch, norm_feature, coin];
@@ -165,16 +161,10 @@ class PGPBuffer(nn.Module):
         else:
             raise ValueError("Unknown source")
 
-        if self._is_unordered:
-            batch_idx = [
-                self._sample_geometric(start_idx, end_idx, self._sample_bias)
-                for _ in range(self._batch_size)
-            ]
-        else:
-            batch_start = self._sample_geometric(
-                start_idx, end_idx, self._sample_bias
-            )
-            batch_idx = list(range(batch_start, batch_start + self._batch_size))
+        batch_start = self._sample_geometric(
+            start_idx, end_idx, self._sample_bias
+        )
+        batch_idx = list(range(batch_start, batch_start + self._batch_size))
         batch = self._pack_samples(batch_idx)
         return batch
 
@@ -192,7 +182,7 @@ class PGPBuffer(nn.Module):
         ])
         # features, [batch, feature, coin, time]
         X = batch[:, :, :, :-1]
-        # price relative vector, [batch, norm_feature, coin]
+        # price relative vector of the last period, [batch, norm_feature, coin]
         y = batch[:, :, :, -1] / batch[:, 0, None, :, -2]
         return {"X": X, "y": y, "last_w": last_w, "setw": setw}
 
@@ -254,11 +244,11 @@ class PGPBuffer(nn.Module):
         return train_idx, test_idx, val_idx
 
 
-def buffer_init_helper(config, device, online=True, directory=None):
+def buffer_init_helper(config, device, online=True, db_directory=None):
     input_config = config["input"]
     train_config = config["training"]
     cdm, features = coin_data_manager_init_helper(
-        config, online=online, download=True, directory=directory
+        config, online=online, download=True, db_directory=db_directory
     )
     buffer = PGPBuffer(
         features,
@@ -268,7 +258,6 @@ def buffer_init_helper(config, device, online=True, directory=None):
         validation_portion=input_config["validation_portion"],
         sample_bias=train_config["buffer_biased"],
         portion_reversed=input_config["portion_reversed"],
-        is_unordered=input_config["is_unordered"],
         device=device,
     )
     return cdm, buffer
