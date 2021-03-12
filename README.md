@@ -6,6 +6,8 @@ Link to project [Video](https://www.youtube.com/watch?v=TuBabSVXCZI&ab_channel=I
 
 Link to project [Slides](https://docs.google.com/presentation/d/1WagL1_1kufbpzJYGrKOdwAA4oAjFO3FmcLfOpastRAQ/edit?usp=sharing)
 
+Link to original [Implementation](https://github.com/ZhengyaoJiang/PGPortfolio)
+
 ### Overview
 
 1. How to use the framework.
@@ -131,7 +133,47 @@ Steps to access and interact with the poloniex exchange are [here](https://docs.
 
 ### Method of the framework
 
+We have already included all details in the slides, you can also refer to the [original paper](https://arxiv.org/pdf/1706.10059v2.pdf) for more details, here we will only talk about the most core things needed by this model.
 
+#### Model assumptions
+
+- **Zero slippage:** The liquidity of all market assets is high enough that, each trade can be carried out immediately at the last price when a order is placed.
+- **Zero market impact**: The capital invested by the software trading agent is so insignificant that is has no influence on the market.
+
+#### Metrics
+
+- p: Total portfolio value scalar at time step t, initial value p0 is usually set to 1.
+- v: Portfolio price vector, each element i contains the market closing price of portfolio i at time t.
+- y: Portfolio price relative vector.
+- u: Commission rate scalar. 
+  - This scalar can be computed precisely using a recursive method.
+  - Or estimated using a fixed commission ratio, details are left out here.
+
+#### loss function
+
+Default is loss function 6, which means:
+
+```_
+loss = mean(log(p_0 * product(u_t * y_t * w_{t-1}))
+```
+
+You can see all loss functions [here](https://github.com/iffiX/PGPortfolio-pytorch/blob/master/pgportfolio/nnagent/metrics.py)
+
+#### Agent input / output:
+
+In our default config (mainly because the output layer is "EIIE_Output_WithW" which ends with "WithW", meaning last portfolio weight vector is required.) The network takes in a 4 dimensional coin features of shape `[batch, feature, coin, time]`, and a last weight vector of shape `[batch, coin]`
+
+```
+net(features, last_w) -> new_w
+```
+
+The output is of shape `[batch, coin+1]`, with the default cash weight appended to the front. In this case the default cash is BTC.
+
+#### Agent interaction with buffer
+
+#### ![agent](images/agent.png)
+
+In each training step, the agent samples a batch which is continuous in time and train on it, then output new weights to update old weights in the portfolio vector memory(PVM).
 
 ### Code implementation
 
