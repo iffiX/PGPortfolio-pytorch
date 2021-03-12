@@ -21,7 +21,7 @@ class CORNK(TDAgent):
 
 
     def decide_by_history(self, x, last_b, **kwargs):
-        self.record_history(X)
+        self.record_history(x)
 
         n, m = self.history.shape
 

@@ -14,9 +14,9 @@ from pgportfolio.trade.backtest import BackTest
 # The dictionary of name of indicators mapping to the function of
 # related indicators.
 # Input is portfolio change vector, a ndarray.
-INDICATORS = {"portfolio value": np.prod,
-              "sharpe ratio": sharpe,
-              "max drawdown": max_drawdown,
+INDICATORS = {"portfolio value(fAPV)": np.prod,
+              "sharpe ratio(SR)": sharpe,
+              "max drawdown(MDD)": max_drawdown,
               "positive periods": positive_count,
               "negative periods": negative_count,
               "postive day":

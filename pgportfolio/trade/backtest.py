@@ -67,7 +67,7 @@ class BackTest:
                                           "coin_name_list": cdm.coins}
                 self._coin_name_list = cdm.coins
             else:
-                self._test_set = traditional_data_cache["test_set"]
+                test_set = traditional_data_cache["test_set"]
                 self._coin_name_list = traditional_data_cache["coin_name_list"]
             if agent_algorithm != "not_used":
                 self._agent = ALGOS[agent_algorithm]()

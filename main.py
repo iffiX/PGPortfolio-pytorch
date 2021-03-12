@@ -1,5 +1,6 @@
-import logging
 import os
+import shutil
+import logging
 import numpy as np
 import pytorch_lightning as pl
 from argparse import ArgumentParser
@@ -76,12 +77,14 @@ def main():
         logging.info("Note: in offline mode.")
 
     if options.mode == "train":
+        # delete old models
+        shutil.rmtree(options.working_dir + "/model")
         config = load_config(options.config)
         save_config(config, options.working_dir + "/config.json")
         checkpoint_callback = ModelCheckpoint(
             dirpath=options.working_dir + "/model",
             filename="{epoch:02d}-{test_portfolio_value:.2f}",
-            save_top_k=10,
+            save_top_k=1,
             monitor="test_portfolio_value", mode="max",
             period=1, verbose=True
         )
@@ -92,7 +95,6 @@ def main():
             options.working_dir + "/log/tensorboard_log"
         )
         trainer = pl.Trainer(
-            weights_save_path=options.working_dir + "/log",
             gpus=0 if options.device == "cpu" else options.device,
             callbacks=[checkpoint_callback, early_stopping],
             logger=[t_logger],
