@@ -402,7 +402,21 @@ Finally we just need to pass this `LightningModule` to the trainer, and complete
         trainer.fit(model)
 ```
 
+### Result
 
+For more detailed report and complete table of metrics, please refer to [results](https://github.com/iffiX/PGPortfolio-pytorch/tree/master/results)
+
+#### Backtest 1
+
+![backtest_start_2016-08-21_end_2016-10-28](results/backtest_start_2016-08-21_end_2016-10-28.png)
+
+#### Backtest 2
+
+![backtest_start_2016-11-30_end_2017-01-28](results/backtest_start_2016-11-30_end_2017-01-28.png)
+
+Backtest 3
+
+![backtest_start_2017-02-27_end_2017-04-27](results/backtest_start_2017-02-27_end_2017-04-27.png)
 
 ### Future improvements
 
