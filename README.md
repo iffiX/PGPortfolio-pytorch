@@ -21,6 +21,24 @@ Link to original [Implementation](https://github.com/ZhengyaoJiang/PGPortfolio)
 
 ### Usage
 
+#### Installation
+
+Make sure your python version >= 3.7, create a virtual environment using:
+
+```
+virtualenv venv
+chmod +x venv/bin/activate
+venv/bin/activate
+```
+
+Then install requirements using:
+
+```
+pip install -r requirements.txt
+```
+
+
+
 #### Command line
 
 Currently our implementation doesn't support parallel training, so you will have to manually train with each config file:
