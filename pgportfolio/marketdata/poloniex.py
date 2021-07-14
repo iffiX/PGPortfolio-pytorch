@@ -5,7 +5,7 @@ import json
 import logging
 from pgportfolio import constants
 from sockshandler import SocksiPyHandler
-from urllib.request import Request, build_opener
+from urllib.request import HTTPSHandler, Request, build_opener
 from urllib.parse import urlencode
 
 minute = 60
@@ -84,11 +84,14 @@ class Poloniex:
             context = ssl.create_default_context()
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
-            opener = build_opener(
-                SocksiPyHandler(socks.PROXY_TYPE_SOCKS5,
-                                constants.PROXY_ADDR,
-                                constants.PROXY_PORT,
-                                True, context=context))
+            if constants.PROXY_ADDR == "" or constants.PROXY_PORT is None:
+                opener = build_opener(HTTPSHandler(context=context))
+            else:
+                opener = build_opener(
+                    SocksiPyHandler(socks.PROXY_TYPE_SOCKS5,
+                                    constants.PROXY_ADDR,
+                                    constants.PROXY_PORT,
+                                    True, context=context))
             ret = opener.open(Request(url + urlencode(args)))
             return json.loads(ret.read().decode(encoding='UTF-8'))
         else:
