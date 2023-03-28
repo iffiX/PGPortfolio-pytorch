@@ -1,3 +1,5 @@
+#### This implementation is obsolete and archived since the old Poloniex API is deprecated.
+
 ##  A Deep Reinforcement Learning Framework for the Financial Portfolio Management Problem
 
 ### Introduction
