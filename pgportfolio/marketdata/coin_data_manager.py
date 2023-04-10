@@ -296,7 +296,7 @@ class CoinDataManager:
             connection.close()
 
     def _fill_data(self, start, end, coin, cursor):
-        duration = 7819200  # three months
+        duration = self._storage_period * 100       # poloniex data limit = 100 records per request 
         bk_start = start
         for bk_end in range(start + duration - 1, end, duration):
             self._fill_part_data(bk_start, bk_end, coin, cursor)
@@ -318,6 +318,10 @@ class CoinDataManager:
                 datetime.fromtimestamp(end).strftime('%Y-%m-%d %H:%M')
             ))
         for c in chart:
+
+            c['date']=int(c["date"])
+            c['date']/=1000
+
             if c["date"] > 0:
                 if c['weightedAverage'] == 0:
                     weightedAverage = c['close']
@@ -328,10 +332,10 @@ class CoinDataManager:
                 if 'reversed_' in coin:
                     cursor.execute(
                         'INSERT INTO History VALUES (?,?,?,?,?,?,?,?,?)',
-                        (c['date'], coin, 1.0 / c['low'], 1.0 / c['high'],
-                         1.0 / c['open'],
-                         1.0 / c['close'], c['quoteVolume'], c['volume'],
-                         1.0 / weightedAverage))
+                        (c['date'], coin, 1.0 / float(c['low']), 1.0 / float(c['high']),
+                         1.0 / float(c['open']),
+                         1.0 / float(c['close']), c['quoteVolume'], c['volume'],
+                         1.0 / float(weightedAverage)))
                 else:
                     cursor.execute(
                         'INSERT INTO History VALUES (?,?,?,?,?,?,?,?,?)',

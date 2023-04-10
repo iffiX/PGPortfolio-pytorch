@@ -27,6 +27,12 @@ class CoinList(object):
 
         for k, v in vol.items():
             if k.startswith("BTC_") or k.endswith("_BTC"):
+
+                # in new release of poloniex keywords are changed 
+                if not (k in ticker.keys()):
+                    arr = k.split('_')
+                    k = arr[1]+"_"+arr[0]
+
                 pairs.append(k)
                 for c, val in v.items():
                     if c != 'BTC':
@@ -91,9 +97,9 @@ class CoinList(object):
         result = 0
         for one_day in chart:
             if pair.startswith("BTC_"):
-                result += one_day['volume']
+                result += float(one_day['volume'])
             else:
-                result += one_day["quoteVolume"]
+                result += float(one_day["quoteVolume"])
         return result
 
 
